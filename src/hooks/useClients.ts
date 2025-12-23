@@ -55,7 +55,8 @@ export function useClients(filter: ClientFilter = "all") {
         const currentMonth = new Date().getMonth() + 1;
         clients = clients.filter((client) => {
           if (!client.birth_date) return false;
-          const birthMonth = new Date(client.birth_date).getMonth() + 1;
+          // birth_date comes as ISO string (YYYY-MM-DD). Parse without Date() to avoid timezone shifts.
+          const birthMonth = Number(client.birth_date.split("-")[1]);
           return birthMonth === currentMonth;
         });
       } else if (filter === "inactive") {

@@ -196,7 +196,7 @@ export function CampaignsTab() {
                       {client.birth_date && (
                         <Badge variant="outline" className="mb-1">
                           <Cake className="mr-1 h-3 w-3" />
-                          {format(new Date(client.birth_date), "dd/MM")}
+                          {client.birth_date.split("-").slice(1).reverse().join("/")}
                         </Badge>
                       )}
                       {client.last_visit_at && (
