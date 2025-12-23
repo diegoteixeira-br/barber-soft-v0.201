@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useClients, type ClientFilter } from "@/hooks/useClients";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const filterOptions = [
@@ -62,17 +63,48 @@ export function CampaignsTab() {
 
     setIsSending(true);
     
-    // Simulate sending - in real implementation, this would call an edge function
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    toast({
-      title: "Campanha enviada!",
-      description: `Mensagem enviada para ${selectedIds.size} cliente(s).`,
-    });
-    
-    setSelectedIds(new Set());
-    setMessage("");
-    setIsSending(false);
+    try {
+      // Build targets array from selected clients
+      const targets = selectedClients.map((c) => ({
+        phone: c.phone,
+        name: c.name,
+      }));
+
+      // Call edge function
+      const { data, error } = await supabase.functions.invoke("send-marketing-campaign", {
+        body: {
+          message_template: message,
+          targets,
+        },
+      });
+
+      if (error) {
+        console.error("Error sending campaign:", error);
+        toast({
+          title: "Erro ao enviar campanha",
+          description: error.message || "Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Campanha enviada!",
+        description: data?.message || `Mensagem enviada para ${selectedIds.size} cliente(s).`,
+      });
+      
+      setSelectedIds(new Set());
+      setMessage("");
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast({
+        title: "Erro inesperado",
+        description: "Não foi possível enviar a campanha.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const selectedClients = clients.filter((c) => selectedIds.has(c.id));
