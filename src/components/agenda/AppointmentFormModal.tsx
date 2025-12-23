@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,14 +7,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ClientCombobox } from "@/components/clients/ClientCombobox";
+import { ClientFormModal } from "@/components/clients/ClientFormModal";
+import { useClients, CreateClientData, Client } from "@/hooks/useClients";
 import type { Barber } from "@/hooks/useBarbers";
 import type { Service } from "@/hooks/useServices";
 import type { Appointment, AppointmentFormData } from "@/hooks/useAppointments";
 
 const formSchema = z.object({
+  client_id: z.string().optional(),
   client_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
   client_phone: z.string().optional(),
   client_birth_date: z.string().optional(),
@@ -50,9 +53,15 @@ export function AppointmentFormModal({
   onSubmit,
   isLoading,
 }: AppointmentFormModalProps) {
+  const { clients, createClient } = useClients();
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [showCreateClient, setShowCreateClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      client_id: "",
       client_name: "",
       client_phone: "",
       client_birth_date: "",
@@ -69,6 +78,7 @@ export function AppointmentFormModal({
       if (appointment) {
         const startDate = new Date(appointment.start_time);
         form.reset({
+          client_id: "",
           client_name: appointment.client_name,
           client_phone: appointment.client_phone || "",
           client_birth_date: appointment.client_birth_date || "",
@@ -78,8 +88,10 @@ export function AppointmentFormModal({
           time: format(startDate, "HH:mm"),
           notes: appointment.notes || "",
         });
+        setSelectedClientId(null);
       } else {
         form.reset({
+          client_id: "",
           client_name: "",
           client_phone: "",
           client_birth_date: "",
@@ -89,9 +101,41 @@ export function AppointmentFormModal({
           time: initialDate ? format(initialDate, "HH:mm") : "09:00",
           notes: "",
         });
+        setSelectedClientId(null);
       }
     }
   }, [open, appointment, initialDate, initialBarberId, form]);
+
+  const handleClientSelect = (client: Client | null) => {
+    if (client) {
+      setSelectedClientId(client.id);
+      form.setValue("client_name", client.name);
+      form.setValue("client_phone", client.phone);
+      form.setValue("client_birth_date", client.birth_date || "");
+    } else {
+      setSelectedClientId(null);
+      form.setValue("client_name", "");
+      form.setValue("client_phone", "");
+      form.setValue("client_birth_date", "");
+    }
+  };
+
+  const handleCreateNewClient = (searchValue: string) => {
+    setNewClientName(searchValue);
+    setShowCreateClient(true);
+  };
+
+  const handleClientCreated = (data: CreateClientData) => {
+    createClient.mutate(data, {
+      onSuccess: (newClient) => {
+        setShowCreateClient(false);
+        setSelectedClientId(newClient.id);
+        form.setValue("client_name", newClient.name);
+        form.setValue("client_phone", newClient.phone);
+        form.setValue("client_birth_date", newClient.birth_date || "");
+      },
+    });
+  };
 
   const handleSubmit = (values: FormValues) => {
     const [year, month, day] = values.date.split("-").map(Number);
@@ -114,177 +158,173 @@ export function AppointmentFormModal({
   const activeServices = services.filter(s => s.is_active);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            {appointment ? "Editar Agendamento" : "Novo Agendamento"}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {appointment ? "Editar Agendamento" : "Novo Agendamento"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="client_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Cliente *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="João Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="client_phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone</FormLabel>
-                  <FormControl>
-                    <Input placeholder="(11) 99999-9999" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="client_birth_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Nascimento</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="barber_id"
-                render={({ field }) => (
+                name="client_name"
+                render={() => (
                   <FormItem>
-                    <FormLabel>Barbeiro *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {activeBarbers.map(barber => (
-                          <SelectItem key={barber.id} value={barber.id}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: barber.calendar_color || "#FF6B00" }}
-                              />
-                              {barber.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Cliente *</FormLabel>
+                    <ClientCombobox
+                      clients={clients}
+                      value={selectedClientId}
+                      onChange={handleClientSelect}
+                      onCreateNew={handleCreateNewClient}
+                      placeholder="Buscar ou criar cliente..."
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="service_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serviço *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+              {selectedClientId && (
+                <div className="text-sm text-muted-foreground bg-secondary/50 rounded-md p-3">
+                  <p><strong>Telefone:</strong> {form.watch("client_phone") || "Não informado"}</p>
+                  {form.watch("client_birth_date") && (
+                    <p><strong>Nascimento:</strong> {format(new Date(form.watch("client_birth_date")!), "dd/MM/yyyy")}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="barber_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Barbeiro *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {activeBarbers.map(barber => (
+                            <SelectItem key={barber.id} value={barber.id}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: barber.calendar_color || "#FF6B00" }}
+                                />
+                                {barber.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="service_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serviço *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {activeServices.map(service => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.name} - R$ {Number(service.price).toFixed(2)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {selectedService && (
+                <p className="text-sm text-muted-foreground">
+                  Duração: {selectedService.duration_minutes} min | Valor: R$ {Number(selectedService.price).toFixed(2)}
+                </p>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data *</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
+                        <Input type="date" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        {activeServices.map(service => (
-                          <SelectItem key={service.id} value={service.id}>
-                            {service.name} - R$ {Number(service.price).toFixed(2)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            {selectedService && (
-              <p className="text-sm text-muted-foreground">
-                Duração: {selectedService.duration_minutes} min | Valor: R$ {Number(selectedService.price).toFixed(2)}
-              </p>
-            )}
+                <FormField
+                  control={form.control}
+                  name="time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Horário *</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="date"
+                name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data *</FormLabel>
+                    <FormLabel>Observações</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Textarea placeholder="Observações adicionais..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Horário *</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Salvando..." : appointment ? "Atualizar" : "Criar Agendamento"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Observações adicionais..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Salvando..." : appointment ? "Atualizar" : "Criar Agendamento"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+      {/* Quick Create Client Modal */}
+      <ClientFormModal
+        open={showCreateClient}
+        onOpenChange={setShowCreateClient}
+        onCreate={handleClientCreated}
+        isLoading={createClient.isPending}
+        initialName={newClientName}
+      />
+    </>
   );
 }

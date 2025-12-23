@@ -3,53 +3,92 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
-import { Client } from "@/hooks/useClients";
+import { Client, CreateClientData } from "@/hooks/useClients";
 
 interface ClientFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  client: Client | null;
-  onSave: (data: Partial<Client> & { id: string }) => void;
+  client?: Client | null;
+  onSave?: (data: Partial<Client> & { id: string }) => void;
+  onCreate?: (data: CreateClientData) => void;
   isLoading?: boolean;
+  initialName?: string;
 }
 
 const PREDEFINED_TAGS = ["VIP", "Novo", "Frequente", "Sumido"];
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
 
 export function ClientFormModal({
   open,
   onOpenChange,
   client,
   onSave,
+  onCreate,
   isLoading,
+  initialName = "",
 }: ClientFormModalProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [notes, setNotes] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
 
+  const isEditMode = !!client;
+
   useEffect(() => {
-    if (client) {
-      setName(client.name);
-      setPhone(client.phone);
-      setBirthDate(client.birth_date || "");
-      setTags(client.tags || []);
+    if (open) {
+      if (client) {
+        setName(client.name);
+        setPhone(client.phone);
+        setBirthDate(client.birth_date || "");
+        setNotes(client.notes || "");
+        setTags(client.tags || []);
+      } else {
+        setName(initialName);
+        setPhone("");
+        setBirthDate("");
+        setNotes("");
+        setTags([]);
+      }
+      setNewTag("");
     }
-  }, [client]);
+  }, [client, open, initialName]);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhone(e.target.value));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!client) return;
 
-    onSave({
-      id: client.id,
-      name,
-      phone,
-      birth_date: birthDate || null,
-      tags,
-    });
+    if (isEditMode && client && onSave) {
+      onSave({
+        id: client.id,
+        name,
+        phone,
+        birth_date: birthDate || null,
+        notes: notes || null,
+        tags,
+      });
+    } else if (onCreate) {
+      onCreate({
+        name,
+        phone,
+        birth_date: birthDate || null,
+        notes: notes || null,
+        tags,
+      });
+    }
   };
 
   const toggleTag = (tag: string) => {
@@ -73,12 +112,14 @@ export function ClientFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Editar Cliente</DialogTitle>
+          <DialogTitle className="text-foreground">
+            {isEditMode ? "Editar Cliente" : "Novo Cliente"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
+            <Label htmlFor="name">Nome Completo *</Label>
             <Input
               id="name"
               value={name}
@@ -89,12 +130,12 @@ export function ClientFormModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
+            <Label htmlFor="phone">Telefone *</Label>
             <Input
               id="phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(00) 00000-0000"
+              onChange={handlePhoneChange}
+              placeholder="(99) 99999-9999"
               required
             />
           </div>
@@ -106,6 +147,17 @@ export function ClientFormModal({
               type="date"
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Observações</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex: Gosta de café sem açúcar, prefere corte baixo..."
+              rows={3}
             />
           </div>
 
@@ -159,7 +211,7 @@ export function ClientFormModal({
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : "Salvar"}
+              {isLoading ? "Salvando..." : isEditMode ? "Salvar" : "Criar Cliente"}
             </Button>
           </div>
         </form>

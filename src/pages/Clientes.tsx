@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
-import { Search, Users, Cake, Clock } from "lucide-react";
+import { Search, Users, Cake, Clock, Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientCard } from "@/components/clients/ClientCard";
 import { ClientFormModal } from "@/components/clients/ClientFormModal";
-import { useClients, Client, ClientFilter } from "@/hooks/useClients";
+import { useClients, Client, ClientFilter, CreateClientData } from "@/hooks/useClients";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +24,9 @@ export default function Clientes() {
   const [search, setSearch] = useState("");
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const { clients, isLoading, updateClient, deleteClient } = useClients(filter);
+  const { clients, isLoading, createClient, updateClient, deleteClient } = useClients(filter);
 
   const filteredClients = useMemo(() => {
     if (!search.trim()) return clients;
@@ -35,6 +37,12 @@ export default function Clientes() {
         client.phone.includes(search)
     );
   }, [clients, search]);
+
+  const handleCreate = (data: CreateClientData) => {
+    createClient.mutate(data, {
+      onSuccess: () => setIsCreating(false),
+    });
+  };
 
   const handleSave = (data: Partial<Client> & { id: string }) => {
     updateClient.mutate(data, {
@@ -53,11 +61,17 @@ export default function Clientes() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Clientes</h1>
-          <p className="text-muted-foreground">
-            Gerencie sua base de clientes e CRM
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Clientes</h1>
+            <p className="text-muted-foreground">
+              Gerencie sua base de clientes e CRM
+            </p>
+          </div>
+          <Button onClick={() => setIsCreating(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Cliente
+          </Button>
         </div>
 
         {/* Search and Filters */}
@@ -113,7 +127,7 @@ export default function Clientes() {
               Nenhum cliente encontrado
             </h3>
             <p className="mt-1 text-center text-sm text-muted-foreground max-w-sm">
-              Os clientes são cadastrados automaticamente quando você finaliza agendamentos na Agenda.
+              Clique em "Novo Cliente" para cadastrar seu primeiro cliente.
             </p>
           </div>
         ) : (
@@ -129,6 +143,14 @@ export default function Clientes() {
           </div>
         )}
       </div>
+
+      {/* Create Modal */}
+      <ClientFormModal
+        open={isCreating}
+        onOpenChange={setIsCreating}
+        onCreate={handleCreate}
+        isLoading={createClient.isPending}
+      />
 
       {/* Edit Modal */}
       <ClientFormModal
