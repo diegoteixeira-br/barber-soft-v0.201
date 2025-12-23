@@ -191,7 +191,7 @@ export function AppointmentFormModal({
                 <div className="text-sm text-muted-foreground bg-secondary/50 rounded-md p-3">
                   <p><strong>Telefone:</strong> {form.watch("client_phone") || "Não informado"}</p>
                   {form.watch("client_birth_date") && (
-                    <p><strong>Nascimento:</strong> {format(new Date(form.watch("client_birth_date")!), "dd/MM/yyyy")}</p>
+                    <p><strong>Nascimento:</strong> {form.watch("client_birth_date")?.split('-').reverse().join('/')}</p>
                   )}
                 </div>
               )}

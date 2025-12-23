@@ -94,7 +94,7 @@ export function AppointmentDetailsModal({
             {appointment.client_birth_date && (
               <div className="flex items-center gap-3 text-sm">
                 <Cake className="h-4 w-4 text-muted-foreground" />
-                <span>{format(new Date(appointment.client_birth_date), "dd/MM/yyyy")}</span>
+                <span>{appointment.client_birth_date.split('-').reverse().join('/')}</span>
               </div>
             )}
 
