@@ -9,6 +9,7 @@ export interface Unit {
   phone: string | null;
   manager_name: string | null;
   evolution_instance_name: string | null;
+  evolution_api_key: string | null;
   user_id: string;
   company_id: string | null;
   created_at: string;
@@ -26,7 +27,7 @@ export function useUnits(companyId: string | null = null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: units = [], isLoading } = useQuery({
+const { data: units = [], isLoading, refetch } = useQuery({
     queryKey: ["units", companyId],
     queryFn: async () => {
       let query = supabase
@@ -134,5 +135,5 @@ export function useUnits(companyId: string | null = null) {
     },
   });
 
-  return { units, isLoading, createUnit, updateUnit, deleteUnit };
+  return { units, isLoading, createUnit, updateUnit, deleteUnit, refetch };
 }

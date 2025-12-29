@@ -1,4 +1,4 @@
-import { Building2, MapPin, Phone, User, MoreVertical, Pencil, Trash2, MessageCircle } from "lucide-react";
+import { Building2, MapPin, Phone, User, MoreVertical, Pencil, Trash2, MessageCircle, Settings2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Unit } from "@/hooks/useUnits";
@@ -14,9 +15,12 @@ interface UnitCardProps {
   unit: Unit;
   onEdit: (unit: Unit) => void;
   onDelete: (unit: Unit) => void;
+  onConfigureWhatsApp: (unit: Unit) => void;
 }
 
-export function UnitCard({ unit, onEdit, onDelete }: UnitCardProps) {
+export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp }: UnitCardProps) {
+  const hasWhatsApp = !!unit.evolution_instance_name;
+
   return (
     <Card className="group relative overflow-hidden border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
       <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -26,12 +30,19 @@ export function UnitCard({ unit, onEdit, onDelete }: UnitCardProps) {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-foreground">{unit.name}</h3>
-            {unit.evolution_instance_name && (
-              <Badge variant="secondary" className="mt-1 text-xs">
-                <MessageCircle className="mr-1 h-3 w-3" />
-                {unit.evolution_instance_name}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 mt-1">
+              {hasWhatsApp ? (
+                <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
+                  <MessageCircle className="mr-1 h-3 w-3" />
+                  WhatsApp Conectado
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  <MessageCircle className="mr-1 h-3 w-3" />
+                  WhatsApp não configurado
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
         
@@ -46,6 +57,11 @@ export function UnitCard({ unit, onEdit, onDelete }: UnitCardProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-popover">
+            <DropdownMenuItem onClick={() => onConfigureWhatsApp(unit)} className="cursor-pointer">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Configurar WhatsApp
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onEdit(unit)} className="cursor-pointer">
               <Pencil className="mr-2 h-4 w-4" />
               Editar

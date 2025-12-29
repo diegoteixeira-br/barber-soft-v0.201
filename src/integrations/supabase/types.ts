@@ -342,6 +342,7 @@ export type Database = {
           address: string | null
           company_id: string | null
           created_at: string
+          evolution_api_key: string | null
           evolution_instance_name: string | null
           id: string
           manager_name: string | null
@@ -353,6 +354,7 @@ export type Database = {
           address?: string | null
           company_id?: string | null
           created_at?: string
+          evolution_api_key?: string | null
           evolution_instance_name?: string | null
           id?: string
           manager_name?: string | null
@@ -364,6 +366,7 @@ export type Database = {
           address?: string | null
           company_id?: string | null
           created_at?: string
+          evolution_api_key?: string | null
           evolution_instance_name?: string | null
           id?: string
           manager_name?: string | null

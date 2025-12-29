@@ -55,29 +55,38 @@ serve(async (req) => {
       throw new Error('Usuário não autenticado');
     }
 
-    // Get user's company
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('owner_user_id', user.id)
-      .single();
+    const { action, unit_id } = await req.json();
+    console.log(`Action: ${action}, Unit ID: ${unit_id}, User: ${user.id}`);
 
-    if (companyError || !company) {
-      console.error('Company error:', companyError);
-      throw new Error('Empresa não encontrada');
+    // For unit-based operations, validate the unit belongs to the user
+    if (!unit_id) {
+      throw new Error('ID da unidade é obrigatório');
     }
 
-    const { action } = await req.json();
-    console.log(`Action: ${action}, Company: ${company.id}`);
+    const { data: unit, error: unitError } = await supabase
+      .from('units')
+      .select('*')
+      .eq('id', unit_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (unitError) {
+      console.error('Unit error:', unitError);
+      throw new Error('Erro ao buscar unidade');
+    }
+
+    if (!unit) {
+      throw new Error('Unidade não encontrada ou sem permissão');
+    }
 
     switch (action) {
       case 'create': {
         // Generate unique instance name and token
         const timestamp = Date.now();
-        const instanceName = `barbersoft_${company.id.substring(0, 8)}_${timestamp}`;
+        const instanceName = `unit_${unit.id.substring(0, 8)}_${timestamp}`;
         const instanceToken = generateToken();
 
-        console.log(`Creating instance: ${instanceName}`);
+        console.log(`Creating instance for unit ${unit.id}: ${instanceName}`);
 
         // Create instance with webhook configuration (Evolution API v2 format)
         const createPayload = {
@@ -111,14 +120,14 @@ serve(async (req) => {
           throw new Error(createData.message || 'Erro ao criar instância');
         }
 
-        // Save instance info to database
+        // Save instance info to units table
         const { error: updateError } = await supabase
-          .from('companies')
+          .from('units')
           .update({
             evolution_instance_name: instanceName,
             evolution_api_key: instanceToken,
           })
-          .eq('id', company.id);
+          .eq('id', unit.id);
 
         if (updateError) {
           console.error('Update error:', updateError);
@@ -140,7 +149,6 @@ serve(async (req) => {
         // Extract QR code from various possible response formats
         const extractedQR = qrData.base64 || qrData.qrcode?.base64 || qrData.code;
         console.log('Extracted QR (first 100 chars):', extractedQR?.substring(0, 100));
-        console.log('Has data:image prefix:', extractedQR?.startsWith('data:image'));
 
         if (!qrResponse.ok) {
           throw new Error(qrData.message || 'Erro ao gerar QR Code');
@@ -157,7 +165,7 @@ serve(async (req) => {
       }
 
       case 'status': {
-        if (!company.evolution_instance_name) {
+        if (!unit.evolution_instance_name) {
           return new Response(JSON.stringify({
             success: true,
             state: 'disconnected',
@@ -166,10 +174,10 @@ serve(async (req) => {
           });
         }
 
-        console.log(`Checking status for: ${company.evolution_instance_name}`);
+        console.log(`Checking status for unit ${unit.id}: ${unit.evolution_instance_name}`);
 
         const statusResponse = await fetch(
-          `${EVOLUTION_API_URL}/instance/connectionState/${company.evolution_instance_name}`,
+          `${EVOLUTION_API_URL}/instance/connectionState/${unit.evolution_instance_name}`,
           {
             method: 'GET',
             headers: {
@@ -197,14 +205,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           success: true,
           state: statusData.state || statusData.instance?.state || 'unknown',
-          instanceName: company.evolution_instance_name,
+          instanceName: unit.evolution_instance_name,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'disconnect': {
-        if (!company.evolution_instance_name) {
+        if (!unit.evolution_instance_name) {
           return new Response(JSON.stringify({
             success: true,
             message: 'Nenhuma instância conectada',
@@ -213,12 +221,12 @@ serve(async (req) => {
           });
         }
 
-        console.log(`Disconnecting: ${company.evolution_instance_name}`);
+        console.log(`Disconnecting unit ${unit.id}: ${unit.evolution_instance_name}`);
 
         // Logout from instance
         try {
           await fetch(
-            `${EVOLUTION_API_URL}/instance/logout/${company.evolution_instance_name}`,
+            `${EVOLUTION_API_URL}/instance/logout/${unit.evolution_instance_name}`,
             {
               method: 'DELETE',
               headers: {
@@ -233,7 +241,7 @@ serve(async (req) => {
         // Delete instance
         try {
           await fetch(
-            `${EVOLUTION_API_URL}/instance/delete/${company.evolution_instance_name}`,
+            `${EVOLUTION_API_URL}/instance/delete/${unit.evolution_instance_name}`,
             {
               method: 'DELETE',
               headers: {
@@ -247,12 +255,12 @@ serve(async (req) => {
 
         // Clear database
         const { error: updateError } = await supabase
-          .from('companies')
+          .from('units')
           .update({
             evolution_instance_name: null,
             evolution_api_key: null,
           })
-          .eq('id', company.id);
+          .eq('id', unit.id);
 
         if (updateError) {
           console.error('Update error:', updateError);
@@ -268,14 +276,14 @@ serve(async (req) => {
       }
 
       case 'refresh-qr': {
-        if (!company.evolution_instance_name) {
+        if (!unit.evolution_instance_name) {
           throw new Error('Nenhuma instância encontrada');
         }
 
-        console.log(`Refreshing QR for: ${company.evolution_instance_name}`);
+        console.log(`Refreshing QR for unit ${unit.id}: ${unit.evolution_instance_name}`);
 
         const qrResponse = await fetch(
-          `${EVOLUTION_API_URL}/instance/connect/${company.evolution_instance_name}`,
+          `${EVOLUTION_API_URL}/instance/connect/${unit.evolution_instance_name}`,
           {
             method: 'GET',
             headers: {
@@ -286,12 +294,9 @@ serve(async (req) => {
 
         const qrData = await qrResponse.json();
         console.log('Refresh QR response status:', qrResponse.status);
-        console.log('Refresh QR response data keys:', Object.keys(qrData));
         
         // Extract QR code from various possible response formats
         const extractedQR = qrData.base64 || qrData.qrcode?.base64 || qrData.code;
-        console.log('Refresh extracted QR (first 100 chars):', extractedQR?.substring(0, 100));
-        console.log('Refresh has data:image prefix:', extractedQR?.startsWith('data:image'));
 
         if (!qrResponse.ok) {
           throw new Error(qrData.message || 'Erro ao atualizar QR Code');

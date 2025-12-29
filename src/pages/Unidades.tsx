@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { UnitCard } from "@/components/units/UnitCard";
 import { UnitFormModal } from "@/components/units/UnitFormModal";
+import { UnitWhatsAppModal } from "@/components/units/UnitWhatsAppModal";
 import { useUnits, Unit } from "@/hooks/useUnits";
 import { useCurrentUnit } from "@/contexts/UnitContext";
 import { Button } from "@/components/ui/button";
@@ -20,10 +21,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Unidades() {
   const { currentCompanyId } = useCurrentUnit();
-  const { units, isLoading, createUnit, updateUnit, deleteUnit } = useUnits(currentCompanyId);
+  const { units, isLoading, createUnit, updateUnit, deleteUnit, refetch } = useUnits(currentCompanyId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
+  const [whatsAppUnit, setWhatsAppUnit] = useState<Unit | null>(null);
 
   const handleOpenModal = (unit?: Unit) => {
     setEditingUnit(unit || null);
@@ -55,13 +57,21 @@ export default function Unidades() {
     }
   };
 
+  const handleConfigureWhatsApp = (unit: Unit) => {
+    setWhatsAppUnit(unit);
+  };
+
+  const handleWhatsAppConnectionChange = () => {
+    refetch();
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Unidades</h1>
-            <p className="mt-1 text-muted-foreground">Gerencie suas filiais</p>
+            <p className="mt-1 text-muted-foreground">Gerencie suas filiais e configure o WhatsApp de cada uma</p>
           </div>
           <Button onClick={() => handleOpenModal()} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -97,6 +107,7 @@ export default function Unidades() {
                 unit={unit}
                 onEdit={handleOpenModal}
                 onDelete={setDeletingUnit}
+                onConfigureWhatsApp={handleConfigureWhatsApp}
               />
             ))}
           </div>
@@ -109,6 +120,13 @@ export default function Unidades() {
         onSubmit={handleSubmit}
         unit={editingUnit}
         isLoading={createUnit.isPending || updateUnit.isPending}
+      />
+
+      <UnitWhatsAppModal
+        open={!!whatsAppUnit}
+        onClose={() => setWhatsAppUnit(null)}
+        unit={whatsAppUnit}
+        onConnectionChange={handleWhatsAppConnectionChange}
       />
 
       <AlertDialog open={!!deletingUnit} onOpenChange={() => setDeletingUnit(null)}>
