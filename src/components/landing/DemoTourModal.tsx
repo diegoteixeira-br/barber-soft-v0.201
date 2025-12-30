@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,12 +27,26 @@ import {
   Bell,
   Gift,
   BarChart3,
+  Volume2,
+  VolumeX,
+  Loader2,
 } from "lucide-react";
 
 interface DemoTourModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+// Narration texts for each slide
+const narrationTexts = [
+  "Painel de Controle Inteligente. Visualize seu faturamento, agendamentos, quantidade de clientes e ticket médio em tempo real. Acompanhe o desempenho semanal e os próximos horários agendados.",
+  "Agenda Completa. Visualize seus agendamentos por dia, semana ou mês. Filtre por profissional e veja todos os detalhes de cada atendimento em um calendário visual e intuitivo.",
+  "Controle Financeiro Total. Acompanhe sua receita, despesas e lucro em tempo real. Veja as comissões de cada profissional e tenha controle total do seu caixa.",
+  "Gestão de Clientes. Acesse o histórico completo de cada cliente, identifique os clientes VIP, veja a frequência de visitas e nunca mais perca um aniversário.",
+  "Integração WhatsApp. Conecte seu WhatsApp escaneando um QR Code e configure mensagens automáticas para lembretes de agendamento, aniversários e resgate de clientes inativos.",
+  "Marketing Inteligente. Crie campanhas em massa, acompanhe a taxa de abertura e conversões. Automatize lembretes de aniversário e recupere clientes que não voltaram.",
+  "Gestão Multi-Unidades. Gerencie todas as suas filiais de forma centralizada. Acompanhe o faturamento, agendamentos e desempenho de cada unidade em um só lugar.",
+];
 
 // Dashboard Preview Slide
 const DashboardSlide = () => (
@@ -417,6 +431,66 @@ const slides = [
 export const DemoTourModal = ({ open, onOpenChange }: DemoTourModalProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCache = useRef<Map<number, string>>(new Map());
+
+  const playNarration = useCallback(async (slideIndex: number) => {
+    if (isMuted) return;
+    
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    // Check cache first
+    if (audioCache.current.has(slideIndex)) {
+      const audioUrl = audioCache.current.get(slideIndex)!;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.play().catch(console.error);
+      return;
+    }
+
+    setIsLoadingAudio(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ 
+            text: narrationTexts[slideIndex],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`TTS request failed: ${response.status}`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Cache the audio URL
+      audioCache.current.set(slideIndex, audioUrl);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      await audio.play();
+    } catch (error) {
+      console.error("Failed to play narration:", error);
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  }, [isMuted]);
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -426,11 +500,18 @@ export const DemoTourModal = ({ open, onOpenChange }: DemoTourModalProps) => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   }, []);
 
+  // Play narration when slide changes
+  useEffect(() => {
+    if (open && !isMuted) {
+      playNarration(currentSlide);
+    }
+  }, [currentSlide, open, isMuted, playNarration]);
+
   // Auto-play
   useEffect(() => {
     if (!isPlaying || !open) return;
     
-    const interval = setInterval(nextSlide, 5000);
+    const interval = setInterval(nextSlide, 8000); // Increased to 8s to allow narration
     return () => clearInterval(interval);
   }, [isPlaying, open, nextSlide]);
 
@@ -446,19 +527,43 @@ export const DemoTourModal = ({ open, onOpenChange }: DemoTourModalProps) => {
         e.preventDefault();
         setIsPlaying((prev) => !prev);
       }
+      if (e.key === "m" || e.key === "M") {
+        setIsMuted((prev) => !prev);
+      }
     };
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, nextSlide, prevSlide, onOpenChange]);
 
-  // Reset on open
+  // Reset and cleanup on open/close
   useEffect(() => {
     if (open) {
       setCurrentSlide(0);
       setIsPlaying(true);
+    } else {
+      // Stop audio when modal closes
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     }
   }, [open]);
+
+  // Toggle mute handler
+  const handleToggleMute = useCallback(() => {
+    if (!isMuted) {
+      // Muting - stop current audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    } else {
+      // Unmuting - play current slide narration
+      playNarration(currentSlide);
+    }
+    setIsMuted((prev) => !prev);
+  }, [isMuted, currentSlide, playNarration]);
 
   const CurrentSlideComponent = slides[currentSlide].component;
   const CurrentIcon = slides[currentSlide].icon;
@@ -479,11 +584,28 @@ export const DemoTourModal = ({ open, onOpenChange }: DemoTourModalProps) => {
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Audio loading indicator */}
+            {isLoadingAudio && (
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            )}
+            
+            {/* Mute/Unmute button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleToggleMute}
+              className="text-muted-foreground hover:text-foreground"
+              title={isMuted ? "Ativar narração (M)" : "Silenciar narração (M)"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
+            
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsPlaying(!isPlaying)}
               className="text-muted-foreground hover:text-foreground"
+              title={isPlaying ? "Pausar (Espaço)" : "Play (Espaço)"}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
@@ -492,6 +614,7 @@ export const DemoTourModal = ({ open, onOpenChange }: DemoTourModalProps) => {
               size="icon"
               onClick={() => onOpenChange(false)}
               className="text-muted-foreground hover:text-foreground"
+              title="Fechar (ESC)"
             >
               <X className="w-5 h-5" />
             </Button>
