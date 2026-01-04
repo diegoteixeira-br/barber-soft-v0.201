@@ -1,5 +1,5 @@
-import { forwardRef, useImperativeHandle } from "react";
-import { Loader2, MessageCircle, RefreshCw, Unplug, Smartphone } from "lucide-react";
+import { forwardRef, useImperativeHandle, useState, useEffect } from "react";
+import { Loader2, MessageCircle, RefreshCw, Unplug, Smartphone, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Unit } from "@/hooks/useUnits";
@@ -26,6 +26,25 @@ export const UnitWhatsAppIntegration = forwardRef<UnitWhatsAppIntegrationRef, Un
       disconnect,
       refreshQRCode,
     } = useUnitEvolutionWhatsApp(unit);
+
+    // Timeout state for QR code generation
+    const [showRetry, setShowRetry] = useState(false);
+
+    // Show retry button if QR code doesn't appear within 15 seconds
+    useEffect(() => {
+      if ((connectionState === 'connecting' || connectionState === 'loading') && !qrCode) {
+        const timeout = setTimeout(() => setShowRetry(true), 15000);
+        return () => clearTimeout(timeout);
+      }
+      setShowRetry(false);
+    }, [connectionState, qrCode]);
+
+    // Handle retry - disconnect and create new instance
+    const handleRetry = async () => {
+      setShowRetry(false);
+      await disconnect();
+      setTimeout(() => createInstance(), 500);
+    };
 
     // Format phone number for display
     const formatPhone = (phone: string | null) => {
@@ -178,8 +197,27 @@ export const UnitWhatsAppIntegration = forwardRef<UnitWhatsAppIntegrationRef, Un
               </>
             ) : (
               <div className="flex flex-col items-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+                {showRetry ? (
+                  <>
+                    <AlertCircle className="h-8 w-8 text-destructive mb-4" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Não foi possível gerar o QR Code. Tente novamente.
+                    </p>
+                    <Button onClick={handleRetry} disabled={isLoading} className="gap-2">
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Tentar novamente
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+                  </>
+                )}
               </div>
             )}
           </div>

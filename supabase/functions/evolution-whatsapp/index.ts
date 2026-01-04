@@ -176,6 +176,12 @@ serve(async (req) => {
 
         console.log(`Checking status for unit ${unit.id}: ${unit.evolution_instance_name}`);
 
+        // Check for stale instances (created more than 5 minutes ago but still in connecting state)
+        const instanceParts = unit.evolution_instance_name.split('_');
+        const instanceTimestamp = instanceParts.length >= 3 ? parseInt(instanceParts[2]) : 0;
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+        const isStaleInstance = instanceTimestamp > 0 && instanceTimestamp < fiveMinutesAgo;
+
         const statusResponse = await fetch(
           `${EVOLUTION_API_URL}/instance/connectionState/${unit.evolution_instance_name}`,
           {
@@ -215,8 +221,9 @@ serve(async (req) => {
 
         const state = statusData.state || statusData.instance?.state || 'unknown';
 
-        // Auto-cleanup: if state is 'close' (QR expired without connection), delete the orphaned instance
-        if (state === 'close') {
+        // Auto-cleanup: if state is 'close' OR stale instance in 'connecting' state, delete the orphaned instance
+        if (state === 'close' || (state === 'connecting' && isStaleInstance)) {
+          console.log(`Instance needs cleanup: state=${state}, isStale=${isStaleInstance}`);
           console.log('Instance is in close state (orphaned), cleaning up...');
           
           // Delete instance from Evolution API
