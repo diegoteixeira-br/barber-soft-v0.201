@@ -33,6 +33,7 @@ const PRESET_COLORS = [
 const barberSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   phone: z.string().optional(),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
   photo_url: z.string().optional().or(z.literal("")),
   calendar_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor inválida"),
   commission_rate: z.number().min(0).max(100),
@@ -66,6 +67,7 @@ export function BarberFormModal({
     defaultValues: {
       name: "",
       phone: "",
+      email: "",
       photo_url: "",
       calendar_color: "#FF6B00",
       commission_rate: 50,
@@ -85,6 +87,7 @@ export function BarberFormModal({
       form.reset({
         name: barber?.name || "",
         phone: barber?.phone || "",
+        email: barber?.email || "",
         photo_url: barber?.photo_url || "",
         calendar_color: barber?.calendar_color || "#FF6B00",
         commission_rate: barber?.commission_rate || 50,
@@ -177,6 +180,30 @@ export function BarberFormModal({
                   <FormControl>
                     <Input placeholder="Nome do profissional" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email {!barber && "(para acesso ao sistema)"}</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="profissional@email.com" 
+                      {...field} 
+                      disabled={!!barber?.user_id}
+                    />
+                  </FormControl>
+                  {!barber && (
+                    <p className="text-xs text-muted-foreground">
+                      O profissional receberá um convite para criar sua conta
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

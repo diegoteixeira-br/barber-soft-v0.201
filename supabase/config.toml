@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.marketing-automations]
 verify_jwt = false
+
+[functions.invite-barber]
+verify_jwt = true

@@ -148,36 +148,42 @@ export type Database = {
           commission_rate: number | null
           company_id: string | null
           created_at: string
+          email: string | null
           id: string
           is_active: boolean | null
           name: string
           phone: string | null
           photo_url: string | null
           unit_id: string
+          user_id: string | null
         }
         Insert: {
           calendar_color?: string | null
           commission_rate?: number | null
           company_id?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           phone?: string | null
           photo_url?: string | null
           unit_id: string
+          user_id?: string | null
         }
         Update: {
           calendar_color?: string | null
           commission_rate?: number | null
           company_id?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           phone?: string | null
           photo_url?: string | null
           unit_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -496,6 +502,47 @@ export type Database = {
         }
         Relationships: []
       }
+      partnership_terms: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+          version: string
+        }
+        Insert: {
+          company_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          title: string
+          version: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          title?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_terms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_sales: {
         Row: {
           appointment_id: string | null
@@ -691,6 +738,57 @@ export type Database = {
           },
         ]
       }
+      term_acceptances: {
+        Row: {
+          accepted_at: string
+          barber_id: string
+          commission_rate_snapshot: number
+          content_snapshot: string
+          id: string
+          ip_address: string | null
+          term_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          barber_id: string
+          commission_rate_snapshot: number
+          content_snapshot: string
+          id?: string
+          ip_address?: string | null
+          term_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          barber_id?: string
+          commission_rate_snapshot?: number
+          content_snapshot?: string
+          id?: string
+          ip_address?: string | null
+          term_id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_acceptances_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_acceptances_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "partnership_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           address: string | null
@@ -753,15 +851,71 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      barber_has_pending_term: {
+        Args: { _barber_id: string }
+        Returns: boolean
+      }
+      get_barber_by_user_id: {
+        Args: { _user_id: string }
+        Returns: {
+          calendar_color: string | null
+          commission_rate: number | null
+          company_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          photo_url: string | null
+          unit_id: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "barbers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       user_owns_company: { Args: { p_company_id: string }; Returns: boolean }
       user_owns_unit: { Args: { unit_id: string }; Returns: boolean }
     }
     Enums: {
+      app_role: "owner" | "barber"
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -890,6 +1044,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["owner", "barber"],
       appointment_status: ["pending", "confirmed", "completed", "cancelled"],
     },
   },

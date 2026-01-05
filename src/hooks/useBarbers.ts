@@ -9,6 +9,8 @@ export interface Barber {
   name: string;
   photo_url: string | null;
   phone: string | null;
+  email: string | null;
+  user_id: string | null;
   calendar_color: string;
   commission_rate: number;
   is_active: boolean;
@@ -78,6 +80,7 @@ export function useBarbers(unitId: string | null | undefined) {
         .insert({ 
           name: barber.name,
           phone: barber.phone,
+          email: barber.email || null,
           photo_url: barber.photo_url,
           calendar_color: barber.calendar_color,
           commission_rate: barber.commission_rate,
@@ -89,11 +92,44 @@ export function useBarbers(unitId: string | null | undefined) {
         .single();
 
       if (error) throw error;
-      return data;
+      return { barber: data, email: barber.email };
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
       queryClient.invalidateQueries({ queryKey: ["barbers"] });
-      toast({ title: "Profissional adicionado com sucesso!" });
+      
+      // If email provided, send invite
+      if (result.email && result.barber) {
+        try {
+          const { error } = await supabase.functions.invoke("invite-barber", {
+            body: {
+              barberId: result.barber.id,
+              email: result.email,
+              name: result.barber.name,
+              redirectUrl: `${window.location.origin}/auth/barber`,
+            },
+          });
+
+          if (error) {
+            toast({ 
+              title: "Profissional adicionado", 
+              description: "Mas houve erro ao enviar convite. Tente reenviar depois.",
+              variant: "destructive" 
+            });
+          } else {
+            toast({ 
+              title: "Profissional adicionado!", 
+              description: "Convite enviado por email."
+            });
+          }
+        } catch (e) {
+          toast({ 
+            title: "Profissional adicionado", 
+            description: "Mas houve erro ao enviar convite.",
+          });
+        }
+      } else {
+        toast({ title: "Profissional adicionado com sucesso!" });
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao adicionar profissional", description: error.message, variant: "destructive" });

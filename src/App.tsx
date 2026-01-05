@@ -8,6 +8,8 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { UnitProvider } from "@/contexts/UnitContext";
 import LandingPage from "./pages/LandingPage";
 import Auth from "./pages/Auth";
+import BarberAuth from "./pages/BarberAuth";
+import BarberDashboard from "./pages/BarberDashboard";
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
@@ -65,6 +67,10 @@ const App = () => (
             {/* Public Landing Page */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
+            
+            {/* Barber Routes (separate auth flow) */}
+            <Route path="/auth/barber" element={<BarberAuth />} />
+            <Route path="/barbeiro" element={<BarberDashboard />} />
             
             {/* Institutional Pages */}
             <Route path="/api" element={<API />} />

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Barber } from "@/hooks/useBarbers";
-import { Pencil, Trash2, Phone, Percent, Building2 } from "lucide-react";
+import { Pencil, Trash2, Phone, Percent, Building2, Mail, CheckCircle2, Clock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface BarberCardProps {
   barber: Barber;
@@ -32,6 +37,9 @@ export function BarberCard({ barber, onEdit, onDelete, onToggleActive, showUnit 
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const hasAccount = !!barber.user_id;
+  const hasEmail = !!barber.email;
 
   return (
     <Card className="bg-card border-border hover:border-primary/50 transition-colors">
@@ -68,6 +76,25 @@ export function BarberCard({ barber, onEdit, onDelete, onToggleActive, showUnit 
               <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                 <Phone className="h-3 w-3" />
                 <span>{barber.phone}</span>
+              </div>
+            )}
+
+            {barber.email && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                <Mail className="h-3 w-3" />
+                <span className="truncate">{barber.email}</span>
+                <Tooltip>
+                  <TooltipTrigger>
+                    {hasAccount ? (
+                      <CheckCircle2 className="h-3 w-3 text-success" />
+                    ) : (
+                      <Clock className="h-3 w-3 text-warning" />
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {hasAccount ? "Conta ativa" : "Aguardando aceite do convite"}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
 
