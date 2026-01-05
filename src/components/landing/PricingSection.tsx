@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useRemainingSpots } from "@/hooks/useRemainingSpots";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +58,7 @@ const plans = [
 
 export function PricingSection() {
   const { ref, isVisible } = useScrollAnimation();
+  const { remainingSpots, isLoading } = useRemainingSpots();
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
 
@@ -99,7 +101,7 @@ export function PricingSection() {
               </p>
               <div className="mt-2 px-4 py-1 bg-white/20 rounded-full">
                 <p className="text-sm font-bold flex items-center gap-2">
-                  🔥 Apenas <span className="text-yellow-300 text-lg">25</span> vagas para testadores!
+                  🔥 Apenas <span className="text-yellow-300 text-lg">{isLoading ? "..." : remainingSpots}</span> vagas para testadores!
                 </p>
               </div>
             </div>
