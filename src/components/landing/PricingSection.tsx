@@ -85,14 +85,18 @@ export function PricingSection() {
 
         {/* Banner Flutuante - Aviso de Teste Grátis */}
         <div className="flex justify-center mb-8">
-          <div className="animate-float bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-3 rounded-full shadow-lg shadow-green-500/30">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🎉</span>
-              <p className="text-sm md:text-base font-semibold">
-                TESTE GRÁTIS! Plataforma liberada por tempo indeterminado —{" "}
-                <span className="underline">Sem cartão de crédito!</span>
+          <div className="animate-float bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-4 rounded-2xl shadow-lg shadow-green-500/30">
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎉</span>
+                <p className="text-sm md:text-base font-bold">
+                  PERÍODO DE TESTES — PLANOS AINDA NÃO ESTÃO VALENDO!
+                </p>
+                <span className="text-xl">🎉</span>
+              </div>
+              <p className="text-xs md:text-sm opacity-90">
+                Use a plataforma completa gratuitamente. Sem cartão de crédito, sem compromisso.
               </p>
-              <span className="text-xl">🎉</span>
             </div>
           </div>
         </div>
