@@ -22,16 +22,19 @@ export function useCompany() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: company, isLoading } = useQuery({
+  const { data: company, isLoading, isFetched, isError } = useQuery({
     queryKey: ["company"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
+      // Use order + limit to handle multiple companies gracefully (picks oldest)
       const { data, error } = await supabase
         .from("companies")
         .select("*")
         .eq("owner_user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
@@ -91,6 +94,8 @@ export function useCompany() {
   return {
     company,
     isLoading,
+    isFetched,
+    isError,
     createCompany,
     updateCompany,
   };

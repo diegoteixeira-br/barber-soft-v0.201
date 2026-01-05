@@ -14,7 +14,7 @@ const UnitContext = createContext<UnitContextType | null>(null);
 
 export function UnitProvider({ children }: { children: ReactNode }) {
   const [currentUnitId, setCurrentUnitId] = useState<string | null>(null);
-  const { company, isLoading: companyLoading, createCompany } = useCompany();
+  const { company, isLoading: companyLoading, isFetched: companyFetched, isError: companyError, createCompany } = useCompany();
   const { units, isLoading: unitsLoading, createUnit } = useUnits(company?.id || null);
   const companyCreatingRef = useRef(false);
   const unitCreatingRef = useRef(false);
@@ -24,11 +24,17 @@ export function UnitProvider({ children }: { children: ReactNode }) {
   // Auto-create company and default unit if none exists
   useEffect(() => {
     const initCompanyAndUnit = async () => {
+      // Wait for company query to complete
+      if (!companyFetched || companyLoading) return;
+      
+      // Don't create if there was an error fetching
+      if (companyError) return;
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Create company if doesn't exist (only once)
-      if (!companyLoading && !company && !companyCreatingRef.current && !createCompany.isPending) {
+      // Create company ONLY if query finished, no error, and company is truly null
+      if (company === null && !companyCreatingRef.current && !createCompany.isPending) {
         companyCreatingRef.current = true;
         createCompany.mutate({ name: "Minha Empresa" }, {
           onSettled: () => {
@@ -51,7 +57,7 @@ export function UnitProvider({ children }: { children: ReactNode }) {
       }
     };
     initCompanyAndUnit();
-  }, [company, companyLoading, units, unitsLoading, currentUnitId]);
+  }, [company, companyLoading, companyFetched, companyError, units, unitsLoading, currentUnitId]);
 
   // Update currentUnitId when units change and we have a new default unit
   useEffect(() => {
