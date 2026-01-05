@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.n8n-get-shop-info]
 verify_jwt = false
+
+[functions.marketing-automations]
+verify_jwt = false

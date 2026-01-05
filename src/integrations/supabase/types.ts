@@ -94,6 +94,54 @@ export type Database = {
           },
         ]
       }
+      automation_logs: {
+        Row: {
+          automation_type: string
+          client_id: string
+          company_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          automation_type: string
+          client_id: string
+          company_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          automation_type?: string
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       barbers: {
         Row: {
           calendar_color: string | null
@@ -150,6 +198,8 @@ export type Database = {
       }
       business_settings: {
         Row: {
+          automation_send_hour: number | null
+          automation_send_minute: number | null
           birthday_automation_enabled: boolean | null
           birthday_message_template: string | null
           business_name: string | null
@@ -166,6 +216,8 @@ export type Database = {
           webhook_url: string | null
         }
         Insert: {
+          automation_send_hour?: number | null
+          automation_send_minute?: number | null
           birthday_automation_enabled?: boolean | null
           birthday_message_template?: string | null
           business_name?: string | null
@@ -182,6 +234,8 @@ export type Database = {
           webhook_url?: string | null
         }
         Update: {
+          automation_send_hour?: number | null
+          automation_send_minute?: number | null
           birthday_automation_enabled?: boolean | null
           birthday_message_template?: string | null
           business_name?: string | null

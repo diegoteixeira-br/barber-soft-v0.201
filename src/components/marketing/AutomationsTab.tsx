@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Cake, UserX, Save, Loader2 } from "lucide-react";
+import { Cake, UserX, Save, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useMarketingSettings } from "@/hooks/useMarketingSettings";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function AutomationsTab() {
   const { settings, isLoading, updateSettings } = useMarketingSettings();
@@ -17,6 +18,8 @@ export function AutomationsTab() {
   const [rescueEnabled, setRescueEnabled] = useState(false);
   const [rescueDays, setRescueDays] = useState(30);
   const [rescueMessage, setRescueMessage] = useState("");
+  const [sendHour, setSendHour] = useState(11);
+  const [sendMinute, setSendMinute] = useState(30);
 
   useEffect(() => {
     if (settings) {
@@ -25,6 +28,8 @@ export function AutomationsTab() {
       setRescueEnabled(settings.rescue_automation_enabled ?? false);
       setRescueDays(settings.rescue_days_threshold ?? 30);
       setRescueMessage(settings.rescue_message_template ?? "");
+      setSendHour(settings.automation_send_hour ?? 11);
+      setSendMinute(settings.automation_send_minute ?? 30);
     }
   }, [settings]);
 
@@ -35,6 +40,8 @@ export function AutomationsTab() {
       rescue_automation_enabled: rescueEnabled,
       rescue_days_threshold: rescueDays,
       rescue_message_template: rescueMessage,
+      automation_send_hour: sendHour,
+      automation_send_minute: sendMinute,
     });
   };
 
@@ -47,8 +54,64 @@ export function AutomationsTab() {
     );
   }
 
+  // Generate hour options (business hours: 8-20)
+  const hourOptions = Array.from({ length: 13 }, (_, i) => i + 8);
+  // Generate minute options (0, 15, 30, 45)
+  const minuteOptions = [0, 15, 30, 45];
+
   return (
     <div className="space-y-6">
+      {/* Send Time Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+              <Clock className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Horário de Envio</CardTitle>
+              <CardDescription>
+                Define o horário em que as automações serão executadas diariamente (Horário de Brasília)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Label className="whitespace-nowrap">Enviar às</Label>
+            <Select value={sendHour.toString()} onValueChange={(v) => setSendHour(Number(v))}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {hourOptions.map((h) => (
+                  <SelectItem key={h} value={h.toString()}>
+                    {h.toString().padStart(2, "0")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-lg font-medium">:</span>
+            <Select value={sendMinute.toString()} onValueChange={(v) => setSendMinute(Number(v))}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {minuteOptions.map((m) => (
+                  <SelectItem key={m} value={m.toString()}>
+                    {m.toString().padStart(2, "0")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">(Horário de Brasília)</span>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            💡 Recomendamos enviar no horário do almoço (11h-13h) para melhor taxa de leitura sem incomodar os clientes.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Birthday Automation */}
       <Card>
         <CardHeader>

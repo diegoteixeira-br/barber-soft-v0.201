@@ -8,6 +8,8 @@ export interface MarketingSettings {
   rescue_automation_enabled: boolean;
   rescue_days_threshold: number;
   rescue_message_template: string;
+  automation_send_hour: number;
+  automation_send_minute: number;
 }
 
 export function useMarketingSettings() {
@@ -21,7 +23,7 @@ export function useMarketingSettings() {
 
       const { data, error } = await supabase
         .from("business_settings")
-        .select("birthday_automation_enabled, birthday_message_template, rescue_automation_enabled, rescue_days_threshold, rescue_message_template")
+        .select("birthday_automation_enabled, birthday_message_template, rescue_automation_enabled, rescue_days_threshold, rescue_message_template, automation_send_hour, automation_send_minute")
         .eq("user_id", user.id)
         .maybeSingle();
 
