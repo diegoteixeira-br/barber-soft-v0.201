@@ -180,6 +180,9 @@ serve(async (req) => {
       };
     });
 
+    // Secret for callback validation - must match edge functions
+    const callbackSecret = "X7kP9mN3qR8sT2wZ";
+
     // Build n8n payload matching the workflow format
     const n8nPayload = {
       instanceName: unit.evolution_instance_name,
@@ -189,6 +192,8 @@ serve(async (req) => {
       contacts,
       campaign_id: campaign.id,
       callback_url: `${supabaseUrl}/functions/v1/campaign-callback`,
+      update_status_url: `${supabaseUrl}/functions/v1/update-campaign-status`,
+      callback_secret: callbackSecret,
     };
 
     console.log(`Sending to n8n webhook with ${contacts.length} contacts`);
