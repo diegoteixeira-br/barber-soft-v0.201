@@ -118,9 +118,9 @@ serve(async (req) => {
           integration: "WHATSAPP-BAILEYS",
           webhook: {
             url: N8N_WEBHOOK_URL,
-            byEvents: true,
-            base64: false,
-            events: ["MESSAGES_UPSERT"]
+            byEvents: false,
+            base64: true,
+            events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"]
           }
         };
 
