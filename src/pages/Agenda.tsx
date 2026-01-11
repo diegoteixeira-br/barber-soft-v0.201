@@ -177,7 +177,8 @@ export default function Agenda() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      {/* Special wrapper for Agenda - fixed height with internal scroll */}
+      <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "calendar" | "history")} className="flex flex-col h-full min-h-0 overflow-hidden">
           <div className="border-b border-border bg-card/50 px-4 pt-2 shrink-0">
             <TabsList className="grid w-[300px] grid-cols-2">
