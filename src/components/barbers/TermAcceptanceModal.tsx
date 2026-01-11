@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import DOMPurify from "dompurify";
 import {
   Dialog,
   DialogContent,
@@ -40,11 +41,20 @@ export function TermAcceptanceModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Replace dynamic variables in content
-  const processedContent = term.content
+  // Replace dynamic variables in content and sanitize for XSS protection
+  const rawContent = term.content
     .replace(/\{\{nome\}\}/g, barberName)
     .replace(/\{\{comissao\}\}/g, `${commissionRate}%`)
     .replace(/\{\{unidade\}\}/g, unitName || "Unidade");
+  
+  // Sanitize HTML to prevent XSS attacks - allow only safe formatting tags
+  const sanitizedContent = DOMPurify.sanitize(
+    rawContent.replace(/\n/g, '<br/>'),
+    { 
+      ALLOWED_TAGS: ['br', 'b', 'i', 'u', 'strong', 'em', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'], 
+      ALLOWED_ATTR: [] 
+    }
+  );
 
   // Check scroll position
   useEffect(() => {
@@ -71,7 +81,7 @@ export function TermAcceptanceModal({
   const handleAccept = async () => {
     setIsSubmitting(true);
     try {
-      await onAccept(term.id, processedContent);
+      await onAccept(term.id, sanitizedContent);
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +112,7 @@ export function TermAcceptanceModal({
           >
             <div 
               className="prose prose-sm dark:prose-invert max-w-none text-foreground whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: processedContent.replace(/\n/g, '<br/>') }}
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
           </ScrollArea>
 
