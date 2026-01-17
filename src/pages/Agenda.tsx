@@ -7,6 +7,7 @@ import { CalendarDayView } from "@/components/agenda/CalendarDayView";
 import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
 import { CancellationHistoryTab } from "@/components/agenda/CancellationHistoryTab";
 import { AppointmentHistoryTab } from "@/components/agenda/AppointmentHistoryTab";
+import { DeletionHistoryTab } from "@/components/agenda/DeletionHistoryTab";
 import { AppointmentFormModal } from "@/components/agenda/AppointmentFormModal";
 import { AppointmentDetailsModal } from "@/components/agenda/AppointmentDetailsModal";
 import { QuickServiceModal } from "@/components/agenda/QuickServiceModal";
@@ -20,7 +21,7 @@ import { useBusinessHours } from "@/hooks/useBusinessHours";
 import { useUnits } from "@/hooks/useUnits";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, History, CheckCircle2, XCircle } from "lucide-react";
+import { Calendar, History, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
@@ -157,9 +158,9 @@ export default function Agenda() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (reason?: string) => {
     if (selectedAppointment) {
-      await deleteAppointment.mutateAsync(selectedAppointment.id);
+      await deleteAppointment.mutateAsync({ id: selectedAppointment.id, reason });
       setIsDetailsModalOpen(false);
       setSelectedAppointment(null);
     }
@@ -167,7 +168,9 @@ export default function Agenda() {
 
   const handleDeleteFromForm = async () => {
     if (selectedAppointment) {
-      await deleteAppointment.mutateAsync(selectedAppointment.id);
+      // For form delete, we don't have a reason modal, so check status
+      // If confirmed/completed, this should ideally not happen from form
+      await deleteAppointment.mutateAsync({ id: selectedAppointment.id });
       setIsFormModalOpen(false);
       setSelectedAppointment(null);
     }
@@ -279,7 +282,7 @@ export default function Agenda() {
           <TabsContent value="history" className="flex-1 mt-0 overflow-auto">
             <div className="p-6">
               <Tabs defaultValue="appointments" className="space-y-4">
-                <TabsList className="grid w-[320px] grid-cols-2">
+                <TabsList className="grid w-[450px] grid-cols-3">
                   <TabsTrigger value="appointments" className="gap-2">
                     <CheckCircle2 className="h-4 w-4" />
                     Atendimentos
@@ -287,6 +290,10 @@ export default function Agenda() {
                   <TabsTrigger value="cancellations" className="gap-2">
                     <XCircle className="h-4 w-4" />
                     Cancelamentos
+                  </TabsTrigger>
+                  <TabsTrigger value="deletions" className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Exclusões
                   </TabsTrigger>
                 </TabsList>
                 
@@ -296,6 +303,10 @@ export default function Agenda() {
                 
                 <TabsContent value="cancellations" className="mt-4">
                   <CancellationHistoryTab />
+                </TabsContent>
+
+                <TabsContent value="deletions" className="mt-4">
+                  <DeletionHistoryTab />
                 </TabsContent>
               </Tabs>
             </div>

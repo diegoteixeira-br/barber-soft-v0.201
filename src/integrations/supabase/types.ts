@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_deletions: {
+        Row: {
+          appointment_id: string
+          barber_name: string
+          client_name: string
+          client_phone: string | null
+          company_id: string | null
+          created_at: string
+          deleted_at: string
+          deleted_by: string
+          deletion_reason: string
+          id: string
+          original_status: string
+          payment_method: string | null
+          scheduled_time: string
+          service_name: string
+          total_price: number
+          unit_id: string
+        }
+        Insert: {
+          appointment_id: string
+          barber_name: string
+          client_name: string
+          client_phone?: string | null
+          company_id?: string | null
+          created_at?: string
+          deleted_at?: string
+          deleted_by: string
+          deletion_reason: string
+          id?: string
+          original_status: string
+          payment_method?: string | null
+          scheduled_time: string
+          service_name: string
+          total_price?: number
+          unit_id: string
+        }
+        Update: {
+          appointment_id?: string
+          barber_name?: string
+          client_name?: string
+          client_phone?: string | null
+          company_id?: string | null
+          created_at?: string
+          deleted_at?: string
+          deleted_by?: string
+          deletion_reason?: string
+          id?: string
+          original_status?: string
+          payment_method?: string | null
+          scheduled_time?: string
+          service_name?: string
+          total_price?: number
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_deletions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_deletions_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           barber_id: string | null

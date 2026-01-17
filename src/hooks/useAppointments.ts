@@ -382,12 +382,51 @@ export function useAppointments(startDate?: Date, endDate?: Date, barberId?: str
   });
 
   const deleteAppointment = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      // Fetch full appointment data first
+      const { data: appointment, error: fetchError } = await supabase
+        .from("appointments")
+        .select(`
+          *,
+          barber:barbers(id, name, calendar_color),
+          service:services(id, name, duration_minutes, price)
+        `)
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // If confirmed or completed, record deletion for audit
+      if (appointment && (appointment.status === "confirmed" || appointment.status === "completed")) {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        const { error: auditError } = await supabase.from("appointment_deletions").insert({
+          unit_id: appointment.unit_id,
+          company_id: appointment.company_id,
+          appointment_id: id,
+          client_name: appointment.client_name,
+          client_phone: appointment.client_phone,
+          barber_name: appointment.barber?.name || "Desconhecido",
+          service_name: appointment.service?.name || "Serviço",
+          scheduled_time: appointment.start_time,
+          total_price: appointment.total_price,
+          original_status: appointment.status,
+          payment_method: appointment.payment_method,
+          deleted_by: user?.email || "Desconhecido",
+          deletion_reason: reason || "Não informado",
+        });
+
+        if (auditError) {
+          console.error("Error recording deletion audit:", auditError);
+        }
+      }
+
       const { error } = await supabase.from("appointments").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["deletion-history"] });
       toast({ title: "Agendamento excluído!" });
     },
     onError: (error) => {

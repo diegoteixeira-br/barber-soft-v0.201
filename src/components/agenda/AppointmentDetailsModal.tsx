@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, User, Scissors, Clock, DollarSign, Calendar, Edit, Trash2, CheckCircle, XCircle, Cake, UserX } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Phone, User, Scissors, Clock, DollarSign, Calendar, Edit, Trash2, CheckCircle, XCircle, Cake, UserX, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { StatusBadge, getNextStatus } from "./StatusBadge";
 import { PaymentMethodModal, type PaymentMethod } from "@/components/financeiro/PaymentMethodModal";
@@ -18,7 +19,7 @@ interface AppointmentDetailsModalProps {
   onOpenChange: (open: boolean) => void;
   appointment: Appointment | null;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: (reason?: string) => void;
   onStatusChange: (status: AppointmentStatus, paymentMethod?: string) => void;
   onNoShow?: () => void;
   isLoading?: boolean;
@@ -35,6 +36,8 @@ export function AppointmentDetailsModal({
   isLoading,
 }: AppointmentDetailsModalProps) {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isDeleteWithReasonOpen, setIsDeleteWithReasonOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
   
   if (!appointment) return null;
 
@@ -192,28 +195,44 @@ export function AppointmentDetailsModal({
 
           {/* Action buttons */}
           <div className="flex justify-between pt-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. O agendamento será removido permanentemente.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">
+            {/* For confirmed/completed, use special delete with reason */}
+            {(appointment.status === "confirmed" || appointment.status === "completed") ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  setDeleteReason("");
+                  setIsDeleteWithReasonOpen(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
                     Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. O agendamento será removido permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDelete()} className="bg-destructive hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
 
             <Button variant="outline" size="sm" onClick={onEdit}>
               <Edit className="h-4 w-4 mr-2" />
@@ -231,6 +250,43 @@ export function AppointmentDetailsModal({
         totalPrice={appointment.total_price}
         isLoading={isLoading}
       />
+
+      {/* Delete with Reason Modal - for confirmed/completed appointments */}
+      <Dialog open={isDeleteWithReasonOpen} onOpenChange={setIsDeleteWithReasonOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Exclusão com Registro
+            </DialogTitle>
+            <DialogDescription>
+              Este agendamento já foi {appointment.status === "completed" ? "finalizado" : "confirmado"}.
+              A exclusão será registrada para auditoria financeira. Informe o motivo:
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea 
+            placeholder="Motivo da exclusão (obrigatório)"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteWithReasonOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              disabled={!deleteReason.trim() || isLoading}
+              onClick={() => {
+                onDelete(deleteReason.trim());
+                setIsDeleteWithReasonOpen(false);
+              }}
+            >
+              Confirmar Exclusão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
