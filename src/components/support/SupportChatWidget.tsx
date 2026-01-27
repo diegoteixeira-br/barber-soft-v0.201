@@ -47,46 +47,35 @@ export function SupportChatWidget() {
 
   return (
     <>
-      {/* Floating Speech Bubble Button */}
+      {/* Floating Comic Speech Bubble Button */}
       <button
         onClick={() => setIsOpen(true)}
         className={cn(
-          "fixed bottom-4 right-4 z-50 group",
-          "md:bottom-6 md:right-6",
+          "fixed bottom-3 right-3 z-50 group",
           "transition-all duration-300 ease-out",
-          "hover:scale-105",
+          "hover:scale-110",
           isOpen && "hidden"
         )}
       >
-        <div className="relative flex flex-col items-center justify-center px-4 py-3 bg-background border-2 border-primary rounded-xl shadow-lg glow-gold">
-          {/* Header text */}
-          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">
-            Suporte 24h
+        <div className="relative flex flex-col items-center justify-center w-12 h-12 bg-background border border-primary/80 rounded-full shadow-md">
+          {/* Discrete label */}
+          <span className="text-[6px] font-medium text-primary/70 uppercase tracking-tight leading-none">
+            24h
           </span>
           
           {/* J Avatar */}
-          <span className="text-2xl font-bold text-primary">
+          <span className="text-lg font-bold text-primary leading-none">
             J
           </span>
           
-          {/* Speech bubble tail */}
-          <div className="absolute -bottom-2 right-4">
-            {/* Outer triangle (border) */}
+          {/* Comic speech bubble tail */}
+          <div className="absolute -bottom-1 right-1">
             <div 
-              className="absolute w-0 h-0"
+              className="w-0 h-0"
               style={{
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: '10px solid hsl(var(--primary))',
-              }}
-            />
-            {/* Inner triangle (fill) */}
-            <div 
-              className="absolute w-0 h-0 top-[-2px] left-[2px]"
-              style={{
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '8px solid hsl(var(--background))',
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: '6px solid hsl(var(--primary) / 0.8)',
               }}
             />
           </div>
