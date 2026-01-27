@@ -53,3 +53,24 @@ verify_jwt = false
 
 [functions.support-chat]
 verify_jwt = false
+
+[functions.validate-barber-invite]
+verify_jwt = false
+
+[functions.get-company-owners]
+verify_jwt = false
+
+[functions.delete-company]
+verify_jwt = false
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
