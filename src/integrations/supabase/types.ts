@@ -371,6 +371,7 @@ export type Database = {
           credit_card_fee_percent: number | null
           debit_card_fee_percent: number | null
           fidelity_cuts_threshold: number | null
+          fidelity_min_value: number | null
           fidelity_program_enabled: boolean | null
           id: string
           late_cancellation_fee_percent: number | null
@@ -403,6 +404,7 @@ export type Database = {
           credit_card_fee_percent?: number | null
           debit_card_fee_percent?: number | null
           fidelity_cuts_threshold?: number | null
+          fidelity_min_value?: number | null
           fidelity_program_enabled?: boolean | null
           id?: string
           late_cancellation_fee_percent?: number | null
@@ -435,6 +437,7 @@ export type Database = {
           credit_card_fee_percent?: number | null
           debit_card_fee_percent?: number | null
           fidelity_cuts_threshold?: number | null
+          fidelity_min_value?: number | null
           fidelity_program_enabled?: boolean | null
           id?: string
           late_cancellation_fee_percent?: number | null
