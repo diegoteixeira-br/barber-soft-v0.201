@@ -78,24 +78,6 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              {whatsappStatus === 'checking' ? (
-                <Badge variant="outline" className="text-xs text-muted-foreground">
-                  <MessageCircle className="mr-1 h-3 w-3 animate-pulse" />
-                  Verificando...
-                </Badge>
-              ) : whatsappStatus === 'connected' ? (
-                <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                  <MessageCircle className="mr-1 h-3 w-3" />
-                  WhatsApp Conectado
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs text-muted-foreground">
-                  <MessageCircle className="mr-1 h-3 w-3" />
-                  WhatsApp não conectado
-                </Badge>
-              )}
-            </div>
           </div>
         </div>
         
@@ -160,6 +142,40 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
             <span>{unit.manager_name}</span>
           </div>
         )}
+
+        {/* WhatsApp Action Button */}
+        <div className="pt-2">
+          {whatsappStatus === 'checking' ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full" 
+              disabled
+            >
+              <MessageCircle className="mr-2 h-4 w-4 animate-pulse" />
+              Verificando...
+            </Button>
+          ) : whatsappStatus === 'connected' ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:text-green-300"
+              onClick={() => onConfigureWhatsApp(unit)}
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              WhatsApp Conectado
+            </Button>
+          ) : (
+            <Button 
+              size="sm" 
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => onConfigureWhatsApp(unit)}
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Conectar WhatsApp
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

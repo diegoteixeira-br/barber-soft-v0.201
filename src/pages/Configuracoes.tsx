@@ -1,8 +1,7 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Link2, Ban, FileText, Bell, Percent, Clock, Gift, UserCircle } from "lucide-react";
+import { Building2, Ban, FileText, Bell, Percent, Clock, Gift, UserCircle } from "lucide-react";
 import { BusinessProfileTab } from "@/components/configuracoes/BusinessProfileTab";
-import { IntegrationTab } from "@/components/configuracoes/IntegrationTab";
 import { AccountTab } from "@/components/configuracoes/AccountTab";
 import { CancellationPolicyTab } from "@/components/configuracoes/CancellationPolicyTab";
 import { PartnershipTermsTab } from "@/components/configuracoes/PartnershipTermsTab";
@@ -21,7 +20,7 @@ export default function Configuracoes() {
         </div>
         
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
             <TabsTrigger value="profile" className="gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Perfil</span>
@@ -50,10 +49,6 @@ export default function Configuracoes() {
               <Ban className="h-4 w-4" />
               <span className="hidden sm:inline">Cancelamento</span>
             </TabsTrigger>
-            <TabsTrigger value="integration" className="gap-2">
-              <Link2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Integração</span>
-            </TabsTrigger>
             <TabsTrigger value="account" className="gap-2">
               <UserCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Conta</span>
@@ -81,9 +76,6 @@ export default function Configuracoes() {
             </TabsContent>
             <TabsContent value="cancellation">
               <CancellationPolicyTab />
-            </TabsContent>
-            <TabsContent value="integration">
-              <IntegrationTab />
             </TabsContent>
             <TabsContent value="account">
               <AccountTab />
