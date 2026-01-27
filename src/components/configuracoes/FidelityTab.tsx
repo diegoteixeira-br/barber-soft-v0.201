@@ -13,11 +13,13 @@ export function FidelityTab() {
   
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState(10);
+  const [minValue, setMinValue] = useState(30);
 
   useEffect(() => {
     if (settings) {
       setEnabled(settings.fidelity_program_enabled ?? false);
       setThreshold(settings.fidelity_cuts_threshold ?? 10);
+      setMinValue(settings.fidelity_min_value ?? 30);
     }
   }, [settings]);
 
@@ -25,6 +27,7 @@ export function FidelityTab() {
     updateSettings.mutate({
       fidelity_program_enabled: enabled,
       fidelity_cuts_threshold: threshold,
+      fidelity_min_value: minValue,
     });
   };
 
@@ -87,12 +90,32 @@ export function FidelityTab() {
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="minValue">Valor mínimo do serviço</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">R$</span>
+                <Input
+                  id="minValue"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={minValue}
+                  onChange={(e) => setMinValue(Math.max(0, parseFloat(e.target.value) || 30))}
+                  className="w-28"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Apenas serviços acima de R$ {minValue.toFixed(2).replace('.', ',')} contam como corte
+              </p>
+            </div>
+
             <Alert className="border-primary/50 bg-primary/5">
               <Info className="h-4 w-4 text-primary" />
               <AlertDescription className="text-sm">
                 <strong>Como funciona:</strong>
                 <ul className="mt-2 ml-4 list-disc space-y-1">
-                  <li>A cada corte concluído, o contador do cliente aumenta</li>
+                  <li>Apenas serviços acima de R$ {minValue.toFixed(2).replace('.', ',')} contam como corte</li>
+                  <li>Cortesias (manuais ou de fidelidade) NÃO contam</li>
                   <li>Cortes de dependentes (filhos, familiares) contam para o cliente titular</li>
                   <li>Ao atingir {threshold} cortes, 1 cortesia é creditada automaticamente</li>
                   <li>O contador zera e recomeça a contagem</li>

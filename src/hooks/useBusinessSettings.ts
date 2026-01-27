@@ -18,6 +18,7 @@ export interface BusinessSettings {
   commission_calculation_base: 'gross' | 'net' | null;
   fidelity_program_enabled: boolean | null;
   fidelity_cuts_threshold: number | null;
+  fidelity_min_value: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +37,7 @@ export interface BusinessSettingsInput {
   commission_calculation_base?: 'gross' | 'net' | null;
   fidelity_program_enabled?: boolean | null;
   fidelity_cuts_threshold?: number | null;
+  fidelity_min_value?: number | null;
 }
 
 export function useBusinessSettings() {
