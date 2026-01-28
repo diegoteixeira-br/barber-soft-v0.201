@@ -139,7 +139,13 @@ export function useAdminCompanies() {
     }) => {
       const updates: Record<string, unknown> = {};
       if (planType) updates.plan_type = planType;
-      if (planStatus) updates.plan_status = planStatus;
+      if (planStatus) {
+        updates.plan_status = planStatus;
+        // Se mudar para trial, configurar 7 dias de trial
+        if (planStatus === 'trial') {
+          updates.trial_ends_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        }
+      }
       
       const { error } = await supabase
         .from("companies")
