@@ -1,175 +1,211 @@
 
-# Plano de Correção: Bug do Programa de Fidelidade
+# Plano: Sanitização Dinâmica de Telefones com DDD da Unidade
 
-## Diagnóstico do Problema
+## Resumo
 
-Após análise profunda do banco de dados e código, identifiquei que:
+Criar um trigger de banco de dados que sanitiza automaticamente os telefones antes de salvar, usando o DDD da unidade associada quando o número estiver incompleto.
 
-1. **O trigger existe e está ativo** - `trigger_sync_client_on_complete` está configurado corretamente para `AFTER INSERT OR UPDATE`
+## Análise do Estado Atual
 
-2. **As configurações estão corretas** - O programa de fidelidade está ativado com threshold de 5 cortes e valor mínimo de R$ 29,99
+### Problema Identificado
+Os telefones estão sendo salvos em formatos inconsistentes:
+- `(65) 99999-9998` (formatado com máscara)
+- `6599891722` (apenas números com DDD)
+- `98985847358` (número de outra região)
+- `99999-9998` (sem DDD)
 
-3. **O problema está no trigger** - O `total_visits` incrementa corretamente (ex: cliente "CLIENTE AVULSO" tem 23 visitas), mas `loyalty_cuts` permanece em 0
+### Tabelas Afetadas
+| Tabela | Campo | Prioridade |
+|--------|-------|------------|
+| `clients` | `phone` | **Alta** - Principal |
+| `appointments` | `client_phone` | **Alta** - Usado para sync |
+| `barbers` | `phone` | Média |
+| `product_sales` | `client_phone` | Baixa |
+| `cancellation_history` | `client_phone` | Baixa (histórico) |
+| `appointment_deletions` | `client_phone` | Baixa (histórico) |
 
-4. **Causa raiz identificada**: O trigger busca `client_record` uma vez no início e usa esse valor para calcular se atingiu o threshold. Porém, há um problema na lógica de verificação do INSERT vs UPDATE no PostgreSQL
+### Fonte do DDD Padrão
+A tabela `units` possui o campo `phone` que contém o telefone da unidade (ex: `65996141516`). Os primeiros 2 dígitos após remover o 55 serão usados como DDD padrão.
 
 ## Solução Proposta
 
-### Parte 1: Corrigir o Trigger do Banco de Dados
+### Parte 1: Função de Sanitização
 
-Atualizar a função `sync_client_on_appointment_complete` para:
-- Usar `TG_OP` para distinguir entre INSERT e UPDATE
-- Re-buscar o `client_record` após a atualização de `total_visits` para ter o valor correto de `loyalty_cuts`
-- Adicionar logs de debug (temporários) para rastrear a execução
-
-```text
-+-------------------+     +------------------+     +-------------------+
-|   Appointment     |     |   Trigger        |     |   Cliente         |
-|   Completado      |---->|   Executa        |---->|   Atualizado      |
-+-------------------+     +------------------+     +-------------------+
-                                 |
-                                 v
-                          +------------------+
-                          | Verifica:        |
-                          | - Fidelidade ON? |
-                          | - Valor >= Min?  |
-                          | - Não é cortesia?|
-                          +------------------+
-                                 |
-                      +----------+-----------+
-                      |                      |
-                      v                      v
-               +-------------+        +-------------+
-               | Incrementa  |        | Credita     |
-               | loyalty_cuts|        | cortesia +  |
-               | +1          |        | zera contador|
-               +-------------+        +-------------+
-```
-
-### Parte 2: Adicionar Notificação Toast no Frontend
-
-Quando o backend detectar que um ciclo foi completado, mostrar toast:
-> "Ciclo Completo! O cliente [Nome] ganhou 1 cortesia."
-
-**Implementação:**
-1. O trigger não pode enviar notificações diretamente
-2. Solução: Após completar um agendamento, o frontend consulta o cliente para verificar se houve mudança em `available_courtesies`
-3. Comparar o valor antes e depois - se aumentou, mostrar o toast
-
-### Parte 3: Alterações Necessárias
-
-#### 3.1 Migration SQL (Correção do Trigger)
+Criar uma função PostgreSQL reutilizável:
 
 ```sql
-CREATE OR REPLACE FUNCTION public.sync_client_on_appointment_complete()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $function$
+CREATE OR REPLACE FUNCTION sanitize_brazilian_phone(
+  raw_phone TEXT,
+  unit_id UUID DEFAULT NULL
+) RETURNS TEXT AS $$
 DECLARE
-  client_record RECORD;
-  fidelity_enabled boolean;
-  cuts_threshold integer;
-  min_value numeric;
-  owner_id uuid;
-  should_count_loyalty boolean;
-  is_new_status_completed boolean;
+  digits TEXT;
+  unit_phone TEXT;
+  unit_ddd TEXT;
 BEGIN
-  -- Determine if this is a new completion
-  IF TG_OP = 'INSERT' THEN
-    is_new_status_completed := (NEW.status = 'completed');
-  ELSE
-    is_new_status_completed := (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed');
-  END IF;
-
-  IF is_new_status_completed THEN
-    -- [resto da lógica...]
-    
-    -- IMPORTANTE: Re-buscar client_record APÓS atualizar total_visits
-    -- para ter o valor correto de loyalty_cuts
-    SELECT * INTO client_record 
-    FROM public.clients 
-    WHERE unit_id = NEW.unit_id AND phone = NEW.client_phone;
-    
-    -- [lógica de fidelidade com client_record atualizado...]
+  -- 1. Remover tudo que não for número
+  digits := regexp_replace(raw_phone, '\D', '', 'g');
+  
+  -- Se vazio, retorna NULL
+  IF digits IS NULL OR digits = '' THEN
+    RETURN NULL;
   END IF;
   
-  RETURN NEW;
+  -- 2. Verificar comprimento e completar
+  
+  -- Caso completo (12+ dígitos): já tem código de país
+  IF length(digits) >= 12 THEN
+    IF left(digits, 2) = '55' THEN
+      RETURN digits; -- Já está completo
+    ELSE
+      RETURN '55' || digits; -- Adiciona 55
+    END IF;
+  END IF;
+  
+  -- Caso com DDD (10-11 dígitos): adiciona apenas 55
+  IF length(digits) >= 10 AND length(digits) <= 11 THEN
+    RETURN '55' || digits;
+  END IF;
+  
+  -- Caso local (8-9 dígitos): precisa buscar DDD da unidade
+  IF length(digits) >= 8 AND length(digits) <= 9 THEN
+    -- Buscar telefone da unidade para extrair DDD
+    IF unit_id IS NOT NULL THEN
+      SELECT phone INTO unit_phone FROM units WHERE id = unit_id;
+      
+      IF unit_phone IS NOT NULL THEN
+        -- Extrair DDD do telefone da unidade
+        unit_phone := regexp_replace(unit_phone, '\D', '', 'g');
+        
+        -- Se tem 55 no início, pular
+        IF left(unit_phone, 2) = '55' AND length(unit_phone) >= 4 THEN
+          unit_ddd := substr(unit_phone, 3, 2);
+        ELSIF length(unit_phone) >= 2 THEN
+          unit_ddd := left(unit_phone, 2);
+        END IF;
+        
+        -- Montar número completo
+        IF unit_ddd IS NOT NULL AND length(unit_ddd) = 2 THEN
+          RETURN '55' || unit_ddd || digits;
+        END IF;
+      END IF;
+    END IF;
+    
+    -- Sem DDD disponível, retorna o número como está
+    RETURN digits;
+  END IF;
+  
+  -- Número muito curto, retorna como está
+  RETURN digits;
 END;
-$function$;
+$$ LANGUAGE plpgsql;
 ```
 
-#### 3.2 Hook useFidelityCourtesy (Nova função para verificar ciclo)
+### Parte 2: Trigger para Tabela `clients`
 
-Adicionar função para consultar se o cliente completou um ciclo:
-- Buscar `available_courtesies` do cliente
-- Comparar com valor anterior (passado como parâmetro)
-- Retornar se houve incremento
+```sql
+CREATE OR REPLACE FUNCTION sanitize_client_phone_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Sanitiza o telefone usando a função
+  NEW.phone := sanitize_brazilian_phone(NEW.phone, NEW.unit_id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-#### 3.3 AppointmentDetailsModal (Toast de notificação)
+CREATE TRIGGER trigger_sanitize_client_phone
+  BEFORE INSERT OR UPDATE OF phone ON clients
+  FOR EACH ROW
+  EXECUTE FUNCTION sanitize_client_phone_trigger();
+```
 
-Após chamar `onStatusChange("completed", ...)`:
-1. Aguardar a mutation completar
-2. Consultar `available_courtesies` do cliente
-3. Se aumentou em relação ao valor anterior, mostrar toast:
-   - Título: "Ciclo Completo!"
-   - Descrição: "O cliente [Nome] ganhou 1 cortesia."
+### Parte 3: Trigger para Tabela `appointments`
 
-### Arquivos a Serem Modificados
+```sql
+CREATE OR REPLACE FUNCTION sanitize_appointment_phone_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Sanitiza o telefone do cliente
+  NEW.client_phone := sanitize_brazilian_phone(NEW.client_phone, NEW.unit_id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_sanitize_appointment_phone
+  BEFORE INSERT OR UPDATE OF client_phone ON appointments
+  FOR EACH ROW
+  EXECUTE FUNCTION sanitize_appointment_phone_trigger();
+```
+
+### Parte 4: Migration para Dados Existentes (Opcional)
+
+Após criar os triggers, podemos normalizar os dados existentes:
+
+```sql
+-- Normalizar telefones de clientes existentes
+UPDATE clients c
+SET phone = sanitize_brazilian_phone(phone, unit_id)
+WHERE phone IS NOT NULL;
+
+-- Normalizar telefones de agendamentos
+UPDATE appointments a
+SET client_phone = sanitize_brazilian_phone(client_phone, unit_id)
+WHERE client_phone IS NOT NULL;
+```
+
+## Exemplos de Comportamento
+
+| Input | DDD Unidade | Resultado |
+|-------|-------------|-----------|
+| `(65) 99999-9998` | - | `5565999999998` |
+| `99999-9998` | `65` | `556599999998` |
+| `999999998` | `11` | `5511999999998` |
+| `6599891722` | - | `556599891722` |
+| `556599891722` | - | `556599891722` |
+
+## Arquivos a Serem Modificados
 
 | Arquivo | Alteração |
 |---------|-----------|
-| Nova migration SQL | Corrigir trigger com `TG_OP` e re-fetch do client |
-| `src/hooks/useFidelityCourtesy.ts` | Adicionar `checkCycleCompletion()` |
-| `src/components/agenda/AppointmentDetailsModal.tsx` | Adicionar lógica de toast após completar |
-| `src/hooks/useAppointments.ts` | Retornar dados do cliente após completar para comparação |
-
-### Testes Recomendados
-
-1. Criar um cliente novo com 4 cortes acumulados
-2. Completar um serviço com valor >= R$ 30
-3. Verificar se `loyalty_cuts` incrementou para 5
-4. Se atingiu threshold, verificar se `available_courtesies` = 1 e `loyalty_cuts` = 0
-5. Verificar se toast "Ciclo Completo!" apareceu
+| Nova migration SQL | Criar função + triggers |
+| Frontend (opcional) | Nenhuma alteração necessária - sanitização é transparente |
 
 ---
 
 ## Seção Técnica
 
-### Detalhes da Correção do Trigger
-
-O problema principal está na condição:
-```sql
-IF NEW.status = 'completed' AND (OLD.status IS NULL OR OLD.status != 'completed')
-```
-
-Em PostgreSQL, quando `TG_OP = 'INSERT'`, a variável `OLD` é NULL inteira, não apenas seus campos. Usar `OLD.status IS NULL` funciona, mas é mais seguro usar:
-```sql
-OLD.status IS DISTINCT FROM 'completed'
-```
-
-Isso trata corretamente tanto INSERT (onde OLD é NULL) quanto UPDATE.
-
-### Fluxo de Verificação do Ciclo no Frontend
+### Fluxo de Execução
 
 ```text
-1. Usuário clica "Finalizar"
-2. Modal de pagamento abre
-3. Usuário seleciona método
-4. handlePaymentConfirm() é chamado
-   |
-   +-> Salva courtesies_before = availableCourtesies (já carregado)
-   +-> Chama onStatusChange("completed", ...)
-   |
-5. Após mutation sucesso:
-   +-> Busca availableCourtesies atual do cliente
-   +-> Se courtesies_atual > courtesies_before:
-       +-> Toast: "Ciclo Completo! [Nome] ganhou 1 cortesia."
++------------------+     +-------------------+     +------------------+
+| Insert/Update    |     | BEFORE Trigger    |     | Dados Salvos     |
+| phone = "(65)    |---->| sanitize_phone()  |---->| phone =          |
+| 99999-9998"      |     |                   |     | "5565999999998"  |
++------------------+     +-------------------+     +------------------+
+                                |
+                                v
+                         +--------------+
+                         | Extrai DDD   |
+                         | da Unidade   |
+                         | se necessário|
+                         +--------------+
 ```
 
-### Considerações de Segurança
+### Lógica de Extração do DDD
 
-- O trigger usa `SECURITY DEFINER` para ter permissões adequadas
-- RLS não interfere pois o trigger executa com privilégios elevados
-- Nenhuma alteração nas integrações Evolution API ou Marketing
+1. Remove caracteres não numéricos do telefone da unidade
+2. Se começa com `55` e tem 4+ dígitos → DDD são os dígitos 3-4
+3. Caso contrário → DDD são os primeiros 2 dígitos
+
+### Considerações de Performance
+
+- Trigger `BEFORE` não adiciona overhead significativo
+- Função usa apenas operações de string (sem JOINs complexos)
+- Busca da unidade é por chave primária (índice)
+
+### Compatibilidade
+
+- Não quebra nenhum código existente
+- Frontend continua enviando telefones formatados
+- Backend normaliza transparentemente
+- Buscas por telefone funcionam pois todos ficam no mesmo formato
