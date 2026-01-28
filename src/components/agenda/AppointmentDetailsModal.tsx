@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, User, Scissors, Clock, DollarSign, Calendar, Edit, Trash2, CheckCircle, XCircle, Cake, UserX, AlertTriangle } from "lucide-react";
@@ -11,6 +11,7 @@ import { StatusBadge, getNextStatus } from "./StatusBadge";
 import { PaymentMethodModal, type PaymentMethod } from "@/components/financeiro/PaymentMethodModal";
 import { useFidelityCourtesy } from "@/hooks/useFidelityCourtesy";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useToast } from "@/hooks/use-toast";
 import type { Appointment } from "@/hooks/useAppointments";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -41,17 +42,23 @@ export function AppointmentDetailsModal({
   const [isDeleteWithReasonOpen, setIsDeleteWithReasonOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [availableCourtesies, setAvailableCourtesies] = useState(0);
+  const courtesiesBeforeRef = useRef<number>(0);
   
+  const { toast } = useToast();
   const { settings } = useBusinessSettings();
-  const { useCourtesy, getClientCourtesies } = useFidelityCourtesy();
+  const { useCourtesy, getClientCourtesies, checkCycleCompletion } = useFidelityCourtesy();
   const fidelityEnabled = settings?.fidelity_program_enabled ?? false;
 
   // Fetch client's available courtesies when modal opens
   useEffect(() => {
     if (open && appointment?.client_phone && appointment?.unit_id && fidelityEnabled) {
-      getClientCourtesies(appointment.client_phone, appointment.unit_id).then(setAvailableCourtesies);
+      getClientCourtesies(appointment.client_phone, appointment.unit_id).then((courtesies) => {
+        setAvailableCourtesies(courtesies);
+        courtesiesBeforeRef.current = courtesies;
+      });
     } else {
       setAvailableCourtesies(0);
+      courtesiesBeforeRef.current = 0;
     }
   }, [open, appointment?.client_phone, appointment?.unit_id, fidelityEnabled]);
   
@@ -67,13 +74,34 @@ export function AppointmentDetailsModal({
     setIsPaymentModalOpen(true);
   };
 
-  const handlePaymentConfirm = (paymentMethod: PaymentMethod, courtesyReason?: string) => {
+  const handlePaymentConfirm = async (paymentMethod: PaymentMethod, courtesyReason?: string) => {
     // If using fidelity courtesy, add automatic reason
     const reason = paymentMethod === "fidelity_courtesy" 
       ? `[Fidelidade] Cortesia por ${settings?.fidelity_cuts_threshold || 10} cortes acumulados`
       : courtesyReason;
+    
+    // Store courtesies before completing
+    const courtesiesBefore = courtesiesBeforeRef.current;
+    const clientName = appointment.client_name;
+    const clientPhone = appointment.client_phone;
+    const unitId = appointment.unit_id;
+    
+    // Complete the appointment
     onStatusChange("completed", paymentMethod, reason);
     setIsPaymentModalOpen(false);
+    
+    // Check if a fidelity cycle was completed (with a small delay to allow trigger to execute)
+    if (fidelityEnabled && clientPhone && paymentMethod !== "courtesy" && paymentMethod !== "fidelity_courtesy") {
+      setTimeout(async () => {
+        const result = await checkCycleCompletion(clientPhone, unitId, courtesiesBefore);
+        if (result.earned) {
+          toast({
+            title: "🎉 Ciclo Completo!",
+            description: `O cliente ${clientName} ganhou 1 cortesia.`,
+          });
+        }
+      }, 1500); // Wait for trigger to execute
+    }
   };
 
   const handleUseFidelityCourtesy = () => {

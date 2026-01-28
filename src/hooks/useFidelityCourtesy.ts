@@ -64,8 +64,25 @@ export function useFidelityCourtesy() {
     return data?.available_courtesies || 0;
   };
 
+  // Check if client earned a new courtesy by comparing before and after values
+  const checkCycleCompletion = async (
+    clientPhone: string | null,
+    unitId: string,
+    courtesiesBefore: number
+  ): Promise<{ earned: boolean; currentCourtesies: number }> => {
+    if (!clientPhone) return { earned: false, currentCourtesies: 0 };
+    
+    const currentCourtesies = await getClientCourtesies(clientPhone, unitId);
+    
+    return {
+      earned: currentCourtesies > courtesiesBefore,
+      currentCourtesies,
+    };
+  };
+
   return {
     useCourtesy,
     getClientCourtesies,
+    checkCycleCompletion,
   };
 }
