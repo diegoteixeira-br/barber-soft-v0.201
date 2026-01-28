@@ -271,6 +271,7 @@ export function useAdminCompanies() {
     companies: companiesQuery.data || [],
     isLoading: companiesQuery.isLoading,
     error: companiesQuery.error,
+    refetch: companiesQuery.refetch,
     blockCompany: blockCompanyMutation.mutate,
     extendTrial: extendTrialMutation.mutate,
     updatePlan: updatePlanMutation.mutate,

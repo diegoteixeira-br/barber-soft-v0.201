@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { AdminCompany, useAdminCompanies } from "@/hooks/useAdminCompanies";
-import { MoreHorizontal, Search, Ban, CheckCircle, Clock, Eye, Trash2, UserX, Handshake, RefreshCw, X, ArrowUpDown } from "lucide-react";
+import { MoreHorizontal, Search, Ban, CheckCircle, Clock, Eye, Trash2, UserX, Handshake, RefreshCw, X, ArrowUpDown, RefreshCcw } from "lucide-react";
 import { formatDistanceToNow, format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CompanyDetailsModal } from "./CompanyDetailsModal";
@@ -67,9 +67,11 @@ export function CompaniesTable() {
     activatePartnership,
     renewPartnership,
     endPartnership,
-    isPartnershipLoading 
+    isPartnershipLoading,
+    refetch
   } = useAdminCompanies();
   
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<AdminCompany | null>(null);
   const [companyToDelete, setCompanyToDelete] = useState<AdminCompany | null>(null);
@@ -113,6 +115,20 @@ export function CompaniesTable() {
             className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
           />
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            setIsRefreshing(true);
+            await refetch();
+            setIsRefreshing(false);
+          }}
+          disabled={isRefreshing}
+          className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700"
+        >
+          <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Atualizar
+        </Button>
       </div>
 
       <div className="rounded-lg border border-slate-700 overflow-hidden">
@@ -292,14 +308,51 @@ export function CompaniesTable() {
                           </DropdownMenuSubContent>
                         </DropdownMenuSub>
                         
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="text-slate-300 focus:text-white focus:bg-slate-700">
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Alterar Status
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="bg-slate-800 border-slate-700">
+                            <DropdownMenuItem 
+                              className={`text-yellow-400 focus:text-yellow-300 focus:bg-slate-700 ${company.plan_status === 'trial' ? 'bg-slate-700/50' : ''}`}
+                              onClick={() => updatePlan({ companyId: company.id, planStatus: 'trial' })}
+                            >
+                              Trial
+                              {company.plan_status === 'trial' && <span className="ml-2 text-xs">(atual)</span>}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className={`text-green-400 focus:text-green-300 focus:bg-slate-700 ${company.plan_status === 'active' ? 'bg-slate-700/50' : ''}`}
+                              onClick={() => updatePlan({ companyId: company.id, planStatus: 'active' })}
+                            >
+                              Ativo
+                              {company.plan_status === 'active' && <span className="ml-2 text-xs">(atual)</span>}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className={`text-purple-400 focus:text-purple-300 focus:bg-slate-700 ${company.plan_status === 'partner' ? 'bg-slate-700/50' : ''}`}
+                              onClick={() => updatePlan({ companyId: company.id, planStatus: 'partner' })}
+                            >
+                              Parceiro
+                              {company.plan_status === 'partner' && <span className="ml-2 text-xs">(atual)</span>}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className={`text-red-400 focus:text-red-300 focus:bg-slate-700 ${company.plan_status === 'overdue' ? 'bg-slate-700/50' : ''}`}
+                              onClick={() => updatePlan({ companyId: company.id, planStatus: 'overdue' })}
+                            >
+                              Inadimplente
+                              {company.plan_status === 'overdue' && <span className="ml-2 text-xs">(atual)</span>}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className={`text-slate-400 focus:text-slate-300 focus:bg-slate-700 ${company.plan_status === 'cancelled' ? 'bg-slate-700/50' : ''}`}
+                              onClick={() => updatePlan({ companyId: company.id, planStatus: 'cancelled' })}
+                            >
+                              Cancelado
+                              {company.plan_status === 'cancelled' && <span className="ml-2 text-xs">(atual)</span>}
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        
                         <DropdownMenuSeparator className="bg-slate-700" />
-                        <DropdownMenuItem 
-                          className="text-slate-300 focus:text-white focus:bg-slate-700"
-                          onClick={() => updatePlan({ companyId: company.id, planStatus: 'cancelled' })}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Cancelar Assinatura
-                        </DropdownMenuItem>
                         {company.plan_status === 'cancelled' && (
                           <DropdownMenuItem 
                             className="text-red-400 focus:text-red-300 focus:bg-slate-700"
