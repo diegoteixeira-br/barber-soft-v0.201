@@ -14,6 +14,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Unit } from "@/hooks/useUnits";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +67,7 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
   const [profile, setProfile] = useState<WhatsAppProfile | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   useEffect(() => {
     const checkWhatsAppStatus = async () => {
@@ -117,6 +128,7 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
       setWhatsappStatus('disconnected');
       setProfile(null);
       setPopoverOpen(false);
+      setShowDisconnectConfirm(false);
     } catch (err) {
       console.error('Error disconnecting WhatsApp:', err);
       toast.error('Erro ao desconectar WhatsApp');
@@ -311,7 +323,7 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={handleDisconnect}
+                    onClick={() => setShowDisconnectConfirm(true)}
                     disabled={isDisconnecting}
                     className="w-full gap-2"
                   >
@@ -336,6 +348,36 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
             </Button>
           )}
         </div>
+
+        {/* Disconnect Confirmation Dialog */}
+        <AlertDialog open={showDisconnectConfirm} onOpenChange={setShowDisconnectConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Desconectar WhatsApp?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja desconectar o WhatsApp desta unidade? 
+                Você precisará escanear o QR Code novamente para reconectar.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDisconnecting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDisconnect}
+                disabled={isDisconnecting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDisconnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Desconectando...
+                  </>
+                ) : (
+                  'Desconectar'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
