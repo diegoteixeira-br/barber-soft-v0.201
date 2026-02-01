@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Client } from "@/hooks/useClients";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useCurrentUnit } from "@/contexts/UnitContext";
+import { useUnits } from "@/hooks/useUnits";
 
 interface ClientCardProps {
   client: Client;
@@ -17,9 +18,11 @@ interface ClientCardProps {
 }
 
 export function ClientCard({ client, onEdit, onDelete, onView, showUnit = false }: ClientCardProps) {
-  const { settings } = useBusinessSettings();
-  const fidelityEnabled = settings?.fidelity_program_enabled ?? false;
-  const fidelityThreshold = settings?.fidelity_cuts_threshold ?? 10;
+  const { currentUnitId } = useCurrentUnit();
+  const { units } = useUnits();
+  const currentUnit = units.find(u => u.id === currentUnitId);
+  const fidelityEnabled = currentUnit?.fidelity_program_enabled ?? false;
+  const fidelityThreshold = currentUnit?.fidelity_cuts_threshold ?? 10;
 
   const initials = client.name
     .split(" ")
