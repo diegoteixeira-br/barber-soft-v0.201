@@ -8,7 +8,8 @@ import { Client } from "@/hooks/useClients";
 import { DependentsList } from "./DependentsList";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useCurrentUnit } from "@/contexts/UnitContext";
+import { useUnits } from "@/hooks/useUnits";
 import { Progress } from "@/components/ui/progress";
 
 interface ClientDetailsModalProps {
@@ -33,9 +34,11 @@ export function ClientDetailsModal({
   onEdit,
   showUnit = false,
 }: ClientDetailsModalProps) {
-  const { settings } = useBusinessSettings();
-  const fidelityEnabled = settings?.fidelity_program_enabled ?? false;
-  const fidelityThreshold = settings?.fidelity_cuts_threshold ?? 10;
+  const { currentUnitId } = useCurrentUnit();
+  const { units } = useUnits();
+  const currentUnit = units.find(u => u.id === currentUnitId);
+  const fidelityEnabled = currentUnit?.fidelity_program_enabled ?? false;
+  const fidelityThreshold = currentUnit?.fidelity_cuts_threshold ?? 10;
 
   if (!client) return null;
 
