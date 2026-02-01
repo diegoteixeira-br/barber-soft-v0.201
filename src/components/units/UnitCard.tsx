@@ -1,4 +1,4 @@
-import { Building2, MapPin, Phone, User, MoreVertical, Pencil, Trash2, MessageCircle, Crown, Settings, Gift } from "lucide-react";
+import { Building2, MapPin, Phone, User, Pencil, Trash2, MessageCircle, Crown, Settings, Gift } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -129,41 +129,31 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
         </div>
         
         <div className="flex items-center gap-1">
-          {/* Gear icon - always visible */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => onSettings?.(unit)}
-            title="Configurações da unidade"
-          >
-            <Settings className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-          </Button>
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
+                title="Configurações da unidade"
               >
-                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                <Settings className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuItem onClick={() => onSettings?.(unit)} className="cursor-pointer">
+                <Gift className="mr-2 h-4 w-4" />
+                Programa de Fidelidade
+              </DropdownMenuItem>
               {!unit.is_headquarters && onSetHeadquarters && (
                 <>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onSetHeadquarters(unit)} className="cursor-pointer">
                     <Crown className="mr-2 h-4 w-4" />
                     Definir como Matriz
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={() => onConfigureWhatsApp(unit)} className="cursor-pointer">
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Configurar WhatsApp
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onEdit(unit)} className="cursor-pointer">
                 <Pencil className="mr-2 h-4 w-4" />
