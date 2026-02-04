@@ -116,11 +116,14 @@ serve(async (req) => {
           token: instanceToken,
           qrcode: true,
           integration: "WHATSAPP-BAILEYS",
+          // Webhook para n8n (chat-barbearia)
+          // MESSAGES_UPSERT: recebe todas as mensagens
+          // O n8n verifica se a mensagem é "SAIR" e redireciona para receptor-barber/process-opt-out
           webhook: {
             url: N8N_WEBHOOK_URL,
             byEvents: false,
             base64: true,
-            events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"]
+            events: ["MESSAGES_UPSERT"]
           }
         };
 
