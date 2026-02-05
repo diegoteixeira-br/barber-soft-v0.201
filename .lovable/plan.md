@@ -1,42 +1,63 @@
 
-# Plano: Corrigir Preview de Imagem no WhatsApp
+# Plano: Corrigir Confirmação de Agendamento via WhatsApp
 
-## Diagnóstico
+## Problema Identificado
 
-O Facebook Debugger mostra a imagem corretamente, mas o WhatsApp não. Isso pode acontecer por:
+A função `handleConfirmAppointment` não está usando a mesma lógica de normalização de telefone que as outras funções da API. Ela não gera todas as variantes necessárias (com/sem 9º dígito, com/sem código país).
 
-1. **Cache agressivo do WhatsApp** - O WhatsApp guarda previews por muito tempo
-2. **Meta tags incompletas** - Faltam algumas tags que o WhatsApp pode esperar
-3. **Tamanho do arquivo** - A imagem pode estar muito pesada
+### Exemplo do Erro
+- Telefone recebido do n8n: `556599891722`
+- Telefone salvo no appointment: `5565999891722` (com 9º dígito)
+- Variantes testadas pela função: `['6599891722', '556599891722']`
+- Variante que encontraria: `5565999891722` (não está sendo testada!)
 
-## Solução
+## Solução Técnica
 
-### 1. Adicionar Meta Tags Extras no index.html
+### Arquivo: `supabase/functions/agenda-api/index.ts`
 
-Vou adicionar tags adicionais que podem ajudar o WhatsApp:
+Modificar a função `handleConfirmAppointment` (linha ~1818) para usar a função `getPhoneVariations()` que já existe no código e gera todas as variantes corretas.
 
-```html
-<!-- Adicionar após as tags existentes -->
-<meta property="og:image:type" content="image/png" />
-<meta property="og:image:secure_url" content="https://barbersoft.com.br/og-image.png" />
-<meta property="og:image:alt" content="BarberSoft - Sistema de Gestão para Barbearias com Dashboard e Chat Jackson" />
+```typescript
+// ANTES (linha ~1830-1841):
+let normalizedPhone = phone.replace(/\D/g, "");
+if (normalizedPhone.startsWith("55") && normalizedPhone.length > 11) {
+  normalizedPhone = normalizedPhone.substring(2);
+}
+const phoneVariants = [normalizedPhone];
+if (!normalizedPhone.startsWith("55")) {
+  phoneVariants.push("55" + normalizedPhone);
+}
+
+// DEPOIS:
+const normalizedPhone = normalizePhoneToStandard(phone); // Converte para 13 dígitos padrão
+const phoneVariants = [
+  normalizedPhone,
+  ...getPhoneVariations(normalizedPhone),
+  phone.replace(/\D/g, '') // Telefone original sem formatação
+];
+// Remover duplicatas
+const uniqueVariants = [...new Set(phoneVariants)].filter(Boolean);
 ```
 
-### 2. Forçar Cache Reset
+Isso vai gerar todas as variantes:
+- `5565999891722` (padrão 13 dígitos)
+- `556599891722` (sem 9º dígito)
+- `65999891722` (sem código país, com 9)
+- `6599891722` (sem código país, sem 9)
 
-Para forçar o WhatsApp a buscar novamente, as opções são:
+## Sobre o Erro "chat_messages_barbersoft_pkey"
 
-- **Opção A**: Renomear a imagem para `og-image-v2.png` e atualizar as meta tags (força o WhatsApp a tratar como novo link)
-- **Opção B**: Aguardar algumas horas para o cache expirar naturalmente
+Esse erro é do **n8n**, não do BarberSoft. O nó "Criar Cliente" no n8n está tentando inserir dados numa tabela `chat_messages_barbersoft` que não existe no banco.
 
-**Recomendo a Opção A** (renomear) pois é mais rápida.
-
-### Arquivos a Modificar
-
-1. `index.html` - Adicionar meta tags extras e atualizar URL da imagem
-2. `public/og-image.png` - Renomear para `public/og-image-v2.png`
-3. `src/components/seo/SEOHead.tsx` - Atualizar referência da imagem padrão
+### Ação Necessária no n8n
+1. Abrir o nó "Criar Cliente" no n8n
+2. Verificar a configuração do "Table Name or ID"
+3. Se a tabela for necessária: criar ela no Lovable Cloud
+4. Se não for necessária: remover ou desativar esse nó
 
 ## Resultado Esperado
 
-Após publicar e enviar o link em um **chat novo** do WhatsApp, a imagem deve aparecer corretamente como no ComunicaZap.
+Após a implementação:
+1. A confirmação via WhatsApp vai funcionar independente do formato do telefone
+2. O sistema vai encontrar agendamentos mesmo com variações de 9º dígito
+3. Diego Teixeira e outros clientes poderão confirmar pelo WhatsApp automaticamente
