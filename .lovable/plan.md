@@ -1,44 +1,79 @@
 
-# Plano: Exibir Forma de Pagamento no Modal de Detalhes
+# Plano: Implementar reCAPTCHA Enterprise no Formulário de Contato
 
-## Objetivo
-Adicionar a exibição da forma de pagamento no modal de detalhes do agendamento quando ele estiver finalizado.
-
-## Análise
-
-O campo `payment_method` já existe na interface `Appointment` e é preenchido quando o agendamento é finalizado. O modal atual já mostra todas as informações, mas falta apenas exibir a forma de pagamento.
+## Configuração Confirmada
+- **Site Key**: `6Le2q2EsAAAAALI1XXCLYyPsl3gfaulb_0JgYXs7`
+- **Secret Key**: Configurada como `RECAPTCHA_SECRET_KEY` nos secrets
+- **Tipo**: reCAPTCHA Enterprise (Google Cloud)
 
 ## Implementação
 
-### Arquivo: `src/components/agenda/AppointmentDetailsModal.tsx`
+### 1. Criar Edge Function: `supabase/functions/contact-form/index.ts`
 
-1. **Importar ícone**: Adicionar `Wallet` do lucide-react para representar pagamento
-2. **Criar função helper**: Mapear os códigos internos para labels amigáveis em português
-3. **Adicionar exibição condicional**: Mostrar a forma de pagamento quando o agendamento estiver finalizado (`status === "completed"`)
+```typescript
+// Validação do token reCAPTCHA Enterprise
+const verifyUrl = "https://www.google.com/recaptcha/api/siteverify";
+const formData = new URLSearchParams();
+formData.append("secret", RECAPTCHA_SECRET_KEY);
+formData.append("response", token);
 
-### Mapeamento de Métodos de Pagamento
+const response = await fetch(verifyUrl, {
+  method: "POST",
+  body: formData.toString(),
+});
 
-| Código | Label | Ícone/Cor |
-|--------|-------|-----------|
-| cash | Dinheiro | Verde |
-| pix | PIX | Azul |
-| debit_card | Débito | Laranja |
-| credit_card | Crédito | Roxo |
-| courtesy | Cortesia | Rosa |
-| fidelity_courtesy | Cortesia (Fidelidade) | Rosa |
-
-### Local na Interface
-
-A informação será exibida junto com as outras informações (horário, telefone, barbeiro, serviço), logo após o serviço:
-
+const result = await response.json();
+// Aceitar apenas score >= 0.5
 ```
-⏰ 10:00 - 10:30
-📞 5565999891722
-👤 JEFF
-✂️ Corte Masculino (30 min)
-💳 Dinheiro                   ← NOVO
+
+### 2. Atualizar Frontend: `src/pages/institucional/Contato.tsx`
+
+**Carregar script Enterprise:**
+```typescript
+const script = document.createElement('script');
+script.src = `https://www.google.com/recaptcha/enterprise.js?render=${SITE_KEY}`;
+document.head.appendChild(script);
 ```
+
+**Gerar token no submit:**
+```typescript
+const token = await window.grecaptcha.enterprise.execute(SITE_KEY, { 
+  action: 'contact_form' 
+});
+```
+
+**Enviar para edge function:**
+```typescript
+const { data, error } = await supabase.functions.invoke('contact-form', {
+  body: { name, phone, email, subject, message, recaptchaToken }
+});
+```
+
+### 3. Atualizar Config: `supabase/config.toml`
+
+```toml
+[functions.contact-form]
+verify_jwt = false
+```
+
+## Arquivos a Criar/Modificar
+
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/contact-form/index.ts` | Criar |
+| `src/pages/institucional/Contato.tsx` | Modificar |
+| `supabase/config.toml` | Adicionar função |
+
+## Funcionalidades
+
+1. **Carregamento invisível** - Script carrega em background
+2. **Validação por score** - Rejeita se score < 0.5
+3. **Feedback visual** - Botão desabilitado enquanto carrega
+4. **Texto legal** - Links para políticas do Google (obrigatório)
+5. **Logs detalhados** - Para monitoramento de tentativas
 
 ## Resultado Esperado
 
-Quando um agendamento estiver com status "Finalizado", o modal mostrará a forma de pagamento usada, facilitando a conferência sem precisar ir ao módulo financeiro.
+- Bots serão bloqueados automaticamente
+- Usuários legítimos não verão captcha visual
+- Score baixo = erro "Verificação de segurança falhou"
